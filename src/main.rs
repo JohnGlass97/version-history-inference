@@ -1,3 +1,4 @@
+mod diffing;
 mod hello_world;
 
 use crate::hello_world::get_hw_string;
