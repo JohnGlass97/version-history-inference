@@ -112,3 +112,68 @@ pub fn text_diff_versions(old: Version, new: Version) -> TextualVersionDiff {
         changes,
     };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_push_text_diff_changes_add_one() {
+        let mut changes: Vec<TextChange> = Vec::new();
+        push_text_diff_changes("abc\n", "abc\n123\n", &mut changes);
+
+        assert_eq!(changes.len(), 1);
+
+        assert_eq!(changes[0].tag, ChangeTag::Insert);
+        assert_eq!(changes[0].value, "123\n");
+    }
+
+    #[test]
+    fn test_push_text_diff_changes_delete_one() {
+        let mut changes: Vec<TextChange> = Vec::new();
+        push_text_diff_changes("abc\n123\n", "123\n", &mut changes);
+
+        assert_eq!(changes.len(), 1);
+
+        assert_eq!(changes[0].tag, ChangeTag::Delete);
+        assert_eq!(changes[0].value, "abc\n");
+    }
+
+    #[test]
+    fn test_push_text_diff_changes_replace() {
+        let mut changes: Vec<TextChange> = Vec::new();
+        push_text_diff_changes("abc\n123\n", "abc\ndef\n", &mut changes);
+
+        assert_eq!(changes.len(), 2);
+
+        assert_eq!(changes[0].tag, ChangeTag::Delete);
+        assert_eq!(changes[0].value, "123\n");
+
+        assert_eq!(changes[1].tag, ChangeTag::Insert);
+        assert_eq!(changes[1].value, "def\n");
+    }
+
+    #[test]
+    fn test_push_text_diff_changes_replace_two() {
+        let mut changes: Vec<TextChange> = Vec::new();
+        push_text_diff_changes(
+            "abc\n123\nxyz\n456\nend\n",
+            "abc\ndef\nxyz\nghi\nend\n",
+            &mut changes,
+        );
+
+        assert_eq!(changes.len(), 4);
+
+        assert_eq!(changes[0].tag, ChangeTag::Delete);
+        assert_eq!(changes[0].value, "123\n");
+
+        assert_eq!(changes[1].tag, ChangeTag::Insert);
+        assert_eq!(changes[1].value, "def\n");
+
+        assert_eq!(changes[2].tag, ChangeTag::Delete);
+        assert_eq!(changes[2].value, "456\n");
+
+        assert_eq!(changes[3].tag, ChangeTag::Insert);
+        assert_eq!(changes[3].value, "ghi\n");
+    }
+}
