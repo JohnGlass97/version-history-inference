@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 mod diffing;
 mod hello_world;
 
