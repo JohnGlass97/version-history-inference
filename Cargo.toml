@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chu-liu-edmonds = "0.1.0"
+ndarray = "0.15"
 similar = "2.6.0"
