@@ -1,28 +1,6 @@
-use std::{collections::HashMap, fmt};
-
 use similar::{ChangeTag, TextDiff};
 
-struct TextChange {
-    tag: ChangeTag,
-    old_index: Option<usize>,
-    new_index: Option<usize>,
-    value: String,
-}
-
-pub struct TextualVersionDiff {
-    added_files: Vec<String>,
-    deleted_files: Vec<String>,
-    modified_files: Vec<String>,
-    changes: Vec<TextChange>,
-}
-
-struct FileData {
-    text_content: Option<String>,
-}
-
-pub struct Version {
-    files: HashMap<String, FileData>,
-}
+use crate::types::{TextChange, TextualVersionDiff, Version};
 
 fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
     let diff = TextDiff::from_lines(old, new);
@@ -36,27 +14,6 @@ fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
             })
             .filter(|c| c.tag != ChangeTag::Equal),
     );
-}
-
-fn print_changes(changes: &Vec<TextChange>) {
-    for c in changes {
-        println!("{c}");
-    }
-}
-
-impl fmt::Display for TextChange {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} {}",
-            match self.tag {
-                ChangeTag::Equal => "=",
-                ChangeTag::Delete => "-",
-                ChangeTag::Insert => "+",
-            },
-            self.value.strip_suffix("\n").unwrap_or(&self.value)
-        )
-    }
 }
 
 pub fn text_diff_versions(old: Version, new: Version) -> TextualVersionDiff {
