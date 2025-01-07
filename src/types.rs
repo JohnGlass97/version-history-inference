@@ -25,7 +25,8 @@ pub struct FileData {
 
 #[derive(Debug)]
 pub struct Version {
-    pub version_path: Box<Path>,
+    pub name: String,
+    pub path: Box<Path>,
     pub files: HashMap<String, FileData>,
 }
 

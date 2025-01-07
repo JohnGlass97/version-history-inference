@@ -51,9 +51,9 @@ fn get_relative_path<'a>(path: &'a Path, base: &'a Path) -> Result<&'a Path> {
     Ok(rel_path)
 }
 
-pub fn load_versions(dir: &Path) -> Result<HashMap<String, Version>> {
+pub fn load_versions(dir: &Path) -> Result<Vec<Version>> {
     let version_paths = dirs_in_dir(dir)?;
-    let mut versions: HashMap<String, Version> = HashMap::new();
+    let mut versions: Vec<Version> = Vec::new();
 
     for version_path in version_paths {
         let mut file_paths: Vec<Box<Path>> = Vec::new();
@@ -75,13 +75,11 @@ pub fn load_versions(dir: &Path) -> Result<HashMap<String, Version>> {
             .to_string_lossy()
             .to_string();
 
-        versions.insert(
-            version_name,
-            Version {
-                version_path,
-                files,
-            },
-        );
+        versions.push(Version {
+            name: version_name,
+            path: version_path,
+            files,
+        });
     }
 
     Ok(versions)
@@ -114,11 +112,9 @@ mod tests {
 
         assert_eq!(versions.len(), 2);
 
-        let version_1 = &versions["version_1"];
-        assert_eq!(
-            version_1.version_path,
-            Path::new("test_temp/version_1").into()
-        );
+        let version_1 = &versions[0];
+        assert_eq!(version_1.name, "version_1");
+        assert_eq!(version_1.path, Path::new("test_temp/version_1").into());
         let files_1 = &version_1.files;
         assert_eq!(
             files_1["file_a.txt"].text_content.as_ref().unwrap(),
@@ -129,11 +125,9 @@ mod tests {
             "file_b"
         );
 
-        let version_2 = &versions["version_2"];
-        assert_eq!(
-            version_2.version_path,
-            Path::new("test_temp/version_2").into()
-        );
+        let version_2 = &versions[1];
+        assert_eq!(version_2.name, "version_2");
+        assert_eq!(version_2.path, Path::new("test_temp/version_2").into());
         let files_2 = &version_2.files;
         assert_eq!(
             files_2["file_a.txt"].text_content.as_ref().unwrap(),
