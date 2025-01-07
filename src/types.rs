@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt};
 
 use similar::ChangeTag;
 
+#[derive(Debug)]
 pub struct TextChange {
     pub tag: ChangeTag,
     pub old_index: Option<usize>,
@@ -9,6 +10,7 @@ pub struct TextChange {
     pub value: String,
 }
 
+#[derive(Debug)]
 pub struct TextualVersionDiff {
     pub added_files: Vec<String>,
     pub deleted_files: Vec<String>,
@@ -16,10 +18,12 @@ pub struct TextualVersionDiff {
     pub changes: Vec<TextChange>,
 }
 
+#[derive(Debug)]
 pub struct FileData {
     pub text_content: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct Version {
     pub files: HashMap<String, FileData>,
 }
