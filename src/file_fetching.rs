@@ -44,9 +44,16 @@ fn read_file_to_str_opt(path: &Path) -> Result<Option<String>> {
     }
 }
 
-pub fn load_versions(dir: &Path) -> Result<Vec<Version>> {
+fn get_relative_path<'a>(path: &'a Path, base: &'a Path) -> Result<&'a Path> {
+    let rel_path = path
+        .strip_prefix(&base)
+        .map_err(|e| Error::new(ErrorKind::Other, e))?;
+    Ok(rel_path)
+}
+
+pub fn load_versions(dir: &Path) -> Result<HashMap<String, Version>> {
     let version_paths = dirs_in_dir(dir)?;
-    let mut versions: Vec<Version> = Vec::new();
+    let mut versions: HashMap<String, Version> = HashMap::new();
 
     for version_path in version_paths {
         let mut file_paths: Vec<Box<Path>> = Vec::new();
@@ -55,10 +62,7 @@ pub fn load_versions(dir: &Path) -> Result<Vec<Version>> {
         let mut files: HashMap<String, FileData> = HashMap::new();
 
         for file_path in file_paths {
-            let rel_path = file_path
-                .strip_prefix(&version_path)
-                .map_err(|e| Error::new(ErrorKind::Other, e))?;
-
+            let rel_path = get_relative_path(&file_path, &version_path)?;
             files.insert(
                 rel_path.to_string_lossy().to_string(),
                 FileData {
@@ -67,10 +71,17 @@ pub fn load_versions(dir: &Path) -> Result<Vec<Version>> {
             );
         }
 
-        versions.push(Version {
-            version_path,
-            files,
-        });
+        let version_name = get_relative_path(&version_path, &dir)?
+            .to_string_lossy()
+            .to_string();
+
+        versions.insert(
+            version_name,
+            Version {
+                version_path,
+                files,
+            },
+        );
     }
 
     Ok(versions)
@@ -103,11 +114,12 @@ mod tests {
 
         assert_eq!(versions.len(), 2);
 
+        let version_1 = &versions["version_1"];
         assert_eq!(
-            versions[0].version_path,
+            version_1.version_path,
             Path::new("test_temp/version_1").into()
         );
-        let files_1 = &versions[0].files;
+        let files_1 = &version_1.files;
         assert_eq!(
             files_1["file_a.txt"].text_content.as_ref().unwrap(),
             "file_a"
@@ -117,11 +129,12 @@ mod tests {
             "file_b"
         );
 
+        let version_2 = &versions["version_2"];
         assert_eq!(
-            versions[1].version_path,
+            version_2.version_path,
             Path::new("test_temp/version_2").into()
         );
-        let files_2 = &versions[1].files;
+        let files_2 = &version_2.files;
         assert_eq!(
             files_2["file_a.txt"].text_content.as_ref().unwrap(),
             "file_a_new"
