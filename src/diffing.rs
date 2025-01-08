@@ -16,10 +16,9 @@ fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
     );
 }
 
-pub fn text_diff_versions(old: Version, new: Version) -> TextualVersionDiff {
+pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
     let mut added_files: Vec<String> = Vec::new();
     let mut deleted_files: Vec<String> = Vec::new();
-
     let mut modified_files: Vec<String> = Vec::new();
     let mut changes: Vec<TextChange> = Vec::new();
 
@@ -49,7 +48,7 @@ pub fn text_diff_versions(old: Version, new: Version) -> TextualVersionDiff {
     }
 
     for (file_name, new_file) in new.files.iter() {
-        match new.files.get(file_name) {
+        match old.files.get(file_name) {
             Some(_) => (),
             None => {
                 // File must have been added
