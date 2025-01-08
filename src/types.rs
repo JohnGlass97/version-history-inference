@@ -14,8 +14,9 @@ pub struct TextChange {
 pub struct TextualVersionDiff {
     pub added_files: Vec<String>,
     pub deleted_files: Vec<String>,
+    pub add_delete_changes: Vec<TextChange>,
     pub modified_files: Vec<String>,
-    pub changes: Vec<TextChange>,
+    pub modify_changes: Vec<TextChange>,
 }
 
 #[derive(Debug)]
