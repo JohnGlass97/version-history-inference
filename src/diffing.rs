@@ -1,6 +1,7 @@
 use similar::{ChangeTag, TextDiff};
+use std::{collections::HashMap, path::Path};
 
-use crate::types::{TextChange, TextualVersionDiff, Version};
+use crate::types::{FileData, TextChange, TextualVersionDiff, Version};
 
 fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
     let diff = TextDiff::from_lines(old, new);
@@ -131,5 +132,52 @@ mod tests {
 
         assert_eq!(changes[3].tag, ChangeTag::Insert);
         assert_eq!(changes[3].value, "ghi\n");
+    }
+
+    #[test]
+    fn test_text_diff_versions() {
+        let s = |x: &str| Some(x.to_string());
+
+        let old = Version {
+            version_path: Path::new(".").into(),
+            files: HashMap::from([
+                (
+                    "modified".to_string(),
+                    FileData {
+                        text_content: s("ok_code\n"),
+                    },
+                ),
+                (
+                    "deleted".to_string(),
+                    FileData {
+                        text_content: s("bad_code\n"),
+                    },
+                ),
+            ]),
+        };
+        let new = Version {
+            version_path: Path::new(".").into(),
+            files: HashMap::from([
+                (
+                    "modified".to_string(),
+                    FileData {
+                        text_content: s("better_code\n"),
+                    },
+                ),
+                (
+                    "added".to_string(),
+                    FileData {
+                        text_content: s("good_code\n"),
+                    },
+                ),
+            ]),
+        };
+
+        let diff = text_diff_versions(&old, &new);
+
+        assert_eq!(diff.added_files, ["added"]);
+        assert_eq!(diff.deleted_files, ["deleted"]);
+        assert_eq!(diff.modified_files, ["modified"]);
+        assert_eq!(diff.changes.len(), 4);
     }
 }
