@@ -139,7 +139,8 @@ mod tests {
         let s = |x: &str| Some(x.to_string());
 
         let old = Version {
-            version_path: Path::new(".").into(),
+            name: "old".to_string(),
+            path: Path::new(".").into(),
             files: HashMap::from([
                 (
                     "modified".to_string(),
@@ -156,7 +157,8 @@ mod tests {
             ]),
         };
         let new = Version {
-            version_path: Path::new(".").into(),
+            name: "new".to_string(),
+            path: Path::new(".").into(),
             files: HashMap::from([
                 (
                     "modified".to_string(),
