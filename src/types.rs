@@ -37,6 +37,18 @@ pub struct TreeNode<T> {
     pub children: Vec<TreeNode<T>>,
 }
 
+impl render_as_tree::Node for TreeNode<String> {
+    type Iter<'a> = std::slice::Iter<'a, Self>;
+
+    fn name(&self) -> &str {
+        &self.value
+    }
+
+    fn children(&self) -> Self::Iter<'_> {
+        self.children.iter()
+    }
+}
+
 impl fmt::Display for TextChange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
