@@ -14,8 +14,9 @@ pub struct TextChange {
 pub struct TextualVersionDiff {
     pub added_files: Vec<String>,
     pub deleted_files: Vec<String>,
+    pub add_delete_changes: Vec<TextChange>,
     pub modified_files: Vec<String>,
-    pub changes: Vec<TextChange>,
+    pub modify_changes: Vec<TextChange>,
 }
 
 #[derive(Debug)]
@@ -25,8 +26,27 @@ pub struct FileData {
 
 #[derive(Debug)]
 pub struct Version {
-    pub version_path: Box<Path>,
+    pub name: String,
+    pub path: Box<Path>,
     pub files: HashMap<String, FileData>,
+}
+
+#[derive(Debug)]
+pub struct TreeNode<T> {
+    pub value: T,
+    pub children: Vec<TreeNode<T>>,
+}
+
+impl render_as_tree::Node for TreeNode<String> {
+    type Iter<'a> = std::slice::Iter<'a, Self>;
+
+    fn name(&self) -> &str {
+        &self.value
+    }
+
+    fn children(&self) -> Self::Iter<'_> {
+        self.children.iter()
+    }
 }
 
 impl fmt::Display for TextChange {

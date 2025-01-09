@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::fs::{self, DirEntry};
-use std::io::{self, Error, ErrorKind, Result};
+use std::io;
 use std::path::Path;
 
 use crate::types::{FileData, Version};
 
-fn walk_dir(dir: &Path, file_paths: &mut Vec<Box<Path>>) -> Result<()> {
+fn walk_dir(dir: &Path, file_paths: &mut Vec<Box<Path>>) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
@@ -20,7 +20,7 @@ fn walk_dir(dir: &Path, file_paths: &mut Vec<Box<Path>>) -> Result<()> {
     Ok(())
 }
 
-fn dirs_in_dir(dir: &Path) -> Result<Vec<Box<Path>>> {
+fn dirs_in_dir(dir: &Path) -> io::Result<Vec<Box<Path>>> {
     let mut dir_paths: Vec<Box<Path>> = Vec::new();
 
     for entry in fs::read_dir(dir)? {
@@ -34,7 +34,7 @@ fn dirs_in_dir(dir: &Path) -> Result<Vec<Box<Path>>> {
     Ok(dir_paths)
 }
 
-fn read_file_to_str_opt(path: &Path) -> Result<Option<String>> {
+fn read_file_to_str_opt(path: &Path) -> io::Result<Option<String>> {
     match fs::read_to_string(path) {
         Ok(s) => Ok(Some(s)),
         Err(e) => match e.kind() {
@@ -44,16 +44,14 @@ fn read_file_to_str_opt(path: &Path) -> Result<Option<String>> {
     }
 }
 
-fn get_relative_path<'a>(path: &'a Path, base: &'a Path) -> Result<&'a Path> {
-    let rel_path = path
-        .strip_prefix(&base)
-        .map_err(|e| Error::new(ErrorKind::Other, e))?;
-    Ok(rel_path)
+fn get_relative_path<'a>(path: &'a Path, base: &'a Path) -> &'a Path {
+    path.strip_prefix(&base)
+        .expect("Failed to strip path prefix")
 }
 
-pub fn load_versions(dir: &Path) -> Result<HashMap<String, Version>> {
+pub fn load_versions(dir: &Path) -> io::Result<Vec<Version>> {
     let version_paths = dirs_in_dir(dir)?;
-    let mut versions: HashMap<String, Version> = HashMap::new();
+    let mut versions: Vec<Version> = Vec::new();
 
     for version_path in version_paths {
         let mut file_paths: Vec<Box<Path>> = Vec::new();
@@ -62,26 +60,23 @@ pub fn load_versions(dir: &Path) -> Result<HashMap<String, Version>> {
         let mut files: HashMap<String, FileData> = HashMap::new();
 
         for file_path in file_paths {
-            let rel_path = get_relative_path(&file_path, &version_path)?;
+            let file_rel_path = get_relative_path(&file_path, &version_path);
             files.insert(
-                rel_path.to_string_lossy().to_string(),
+                file_rel_path.to_string_lossy().to_string(),
                 FileData {
                     text_content: read_file_to_str_opt(&file_path)?,
                 },
             );
         }
 
-        let version_name = get_relative_path(&version_path, &dir)?
-            .to_string_lossy()
-            .to_string();
+        let version_rel_path = get_relative_path(&version_path, &dir);
+        let version_name = version_rel_path.to_string_lossy().to_string();
 
-        versions.insert(
-            version_name,
-            Version {
-                version_path,
-                files,
-            },
-        );
+        versions.push(Version {
+            name: version_name,
+            path: version_path,
+            files,
+        });
     }
 
     Ok(versions)
@@ -114,11 +109,8 @@ mod tests {
 
         assert_eq!(versions.len(), 2);
 
-        let version_1 = &versions["version_1"];
-        assert_eq!(
-            version_1.version_path,
-            Path::new("test_temp/version_1").into()
-        );
+        let version_1 = &versions.iter().find(|v| v.name == "version_1").unwrap();
+        assert_eq!(version_1.path, Path::new("test_temp/version_1").into());
         let files_1 = &version_1.files;
         assert_eq!(
             files_1["file_a.txt"].text_content.as_ref().unwrap(),
@@ -129,11 +121,9 @@ mod tests {
             "file_b"
         );
 
-        let version_2 = &versions["version_2"];
-        assert_eq!(
-            version_2.version_path,
-            Path::new("test_temp/version_2").into()
-        );
+        let version_2 = &versions.iter().find(|v| v.name == "version_2").unwrap();
+        assert_eq!(version_2.name, "version_2");
+        assert_eq!(version_2.path, Path::new("test_temp/version_2").into());
         let files_2 = &version_2.files;
         assert_eq!(
             files_2["file_a.txt"].text_content.as_ref().unwrap(),
