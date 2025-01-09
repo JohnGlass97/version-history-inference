@@ -31,6 +31,12 @@ pub struct Version {
     pub files: HashMap<String, FileData>,
 }
 
+#[derive(Debug)]
+pub struct TreeNode<T> {
+    pub value: T,
+    pub children: Vec<TreeNode<T>>,
+}
+
 impl fmt::Display for TextChange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

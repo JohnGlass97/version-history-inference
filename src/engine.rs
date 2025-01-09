@@ -6,7 +6,7 @@ use similar::ChangeTag;
 use crate::{
     diffing::text_diff_versions,
     file_fetching::load_versions,
-    types::{TextChange, TextualVersionDiff, Version},
+    types::{TextChange, TextualVersionDiff, TreeNode, Version},
     version_graph::find_msa,
 };
 
@@ -59,7 +59,24 @@ fn calculate_distances(text_diff: &TextualVersionDiff) -> (f32, f32) {
     (forwards, backwards)
 }
 
-pub fn infer_version_tree(dir: &Path) -> io::Result<()> {
+fn assemble_forest<T>(
+    parents: &Vec<Option<usize>>,
+    parent: Option<usize>,
+    data: &mut Vec<Option<T>>,
+) -> Vec<TreeNode<T>> {
+    let mut forest: Vec<TreeNode<T>> = Vec::new();
+    for (this, p) in parents.iter().enumerate() {
+        if *p == parent {
+            forest.push(TreeNode {
+                value: std::mem::replace(&mut data[this], None).unwrap(),
+                children: assemble_forest(parents, Some(this), data),
+            });
+        }
+    }
+    forest
+}
+
+pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
     let mut versions = load_versions(dir)?;
 
     let null_version = Version {
@@ -88,19 +105,11 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<()> {
 
     let msa = find_msa(distances.view(), 0);
 
-    for (node_i, parent_i) in msa.iter().enumerate() {
-        match parent_i {
-            None => continue,
-            Some(parent_i) => {
-                println!(
-                    "{} came from {}",
-                    versions[node_i].name, versions[*parent_i].name
-                );
-            }
-        }
-    }
+    let mut data = versions.into_iter().map(|s| Some(s)).collect();
+    let mut forest = assemble_forest(&msa, None, &mut data);
 
-    print!("{distances}");
+    assert_eq!(forest.len(), 1, "MSA is not tree");
+    let tree = forest.remove(0);
 
-    Ok(())
+    Ok(tree)
 }
