@@ -5,9 +5,9 @@ use similar::ChangeTag;
 
 use crate::{
     diffing::text_diff_versions,
+    edmonds::find_msa,
     file_fetching::load_versions,
     types::{TextChange, TextualVersionDiff, TreeNode, Version},
-    version_graph::find_msa,
 };
 
 fn distance_heuristic(
