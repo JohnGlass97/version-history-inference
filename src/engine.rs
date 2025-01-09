@@ -21,9 +21,9 @@ fn distance_heuristic(
     0.0 + (added as f32) * 2.0
         + (deleted as f32) * 4.0
         + (modified as f32) * 1.0
-        + (add_delete_changes.max(50) as f32) * 0.05
-        + (modify_add_changes.max(50) as f32) * 0.05
-        + (modify_delete_changes.max(50) as f32) * 0.1
+        + (add_delete_changes.min(50) as f32) * 0.05
+        + (modify_add_changes.min(50) as f32) * 0.05
+        + (modify_delete_changes.min(50) as f32) * 0.1
 }
 
 fn count_tag(changes: &Vec<TextChange>, tag: ChangeTag) -> usize {
