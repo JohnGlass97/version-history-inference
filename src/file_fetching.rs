@@ -109,8 +109,7 @@ mod tests {
 
         assert_eq!(versions.len(), 2);
 
-        let version_1 = &versions[0];
-        assert_eq!(version_1.name, "version_1");
+        let version_1 = &versions.iter().find(|v| v.name == "version_1").unwrap();
         assert_eq!(version_1.path, Path::new("test_temp/version_1").into());
         let files_1 = &version_1.files;
         assert_eq!(
@@ -122,7 +121,7 @@ mod tests {
             "file_b"
         );
 
-        let version_2 = &versions[1];
+        let version_2 = &versions.iter().find(|v| v.name == "version_2").unwrap();
         assert_eq!(version_2.name, "version_2");
         assert_eq!(version_2.path, Path::new("test_temp/version_2").into());
         let files_2 = &version_2.files;
