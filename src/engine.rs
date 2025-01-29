@@ -172,4 +172,62 @@ mod tests {
 
         tmp_dir.close().unwrap();
     }
+
+    #[test]
+    fn handcrafted_2() {
+        let tmp_dir = TempDir::new("test_temp").unwrap();
+        let base = tmp_dir.path();
+
+        fs::create_dir_all(base.join("version_1")).unwrap();
+        fs::write(
+            base.join("version_1/file_a.txt"),
+            "This\nis\nthe\nfirst\nversion\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(base.join("version_2")).unwrap();
+        fs::write(
+            base.join("version_2/file_a.txt"),
+            "This\nis\nthe\nsecond\nversion!\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(base.join("version_3")).unwrap();
+        fs::write(
+            base.join("version_3/file_a.txt"),
+            "Now\nthis\nis\nthe\nthird\nversion!\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(base.join("version_4")).unwrap();
+        fs::write(
+            base.join("version_4/file_a.txt"),
+            "Now\nthis\nis\nthe\nversion\nafter\nthe\nthird\n",
+        )
+        .unwrap();
+
+        let version_tree = infer_version_tree(base).unwrap();
+        let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
+
+        let expected = TreeNode {
+            value: "Empty".to_owned(),
+            children: vec![TreeNode {
+                value: "version_1".to_owned(),
+                children: vec![TreeNode {
+                    value: "version_2".to_owned(),
+                    children: vec![TreeNode {
+                        value: "version_3".to_owned(),
+                        children: vec![TreeNode {
+                            value: "version_4".to_owned(),
+                            children: vec![],
+                        }],
+                    }],
+                }],
+            }],
+        };
+
+        assert_eq!(name_tree, expected);
+
+        tmp_dir.close().unwrap();
+    }
 }
