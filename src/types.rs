@@ -37,6 +37,27 @@ pub struct TreeNode<T> {
     pub children: Vec<TreeNode<T>>,
 }
 
+impl<T: Eq> PartialEq for TreeNode<T> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.value != other.value || self.children.len() != other.children.len() {
+            return false;
+        }
+
+        'outer: for child_a in &self.children {
+            for child_b in &other.children {
+                if child_a == child_b {
+                    continue 'outer;
+                }
+            }
+            return false;
+        }
+        true
+    }
+}
+
+impl<T: Eq> Eq for TreeNode<T> {}
+
+
 impl render_as_tree::Node for TreeNode<String> {
     type Iter<'a> = std::slice::Iter<'a, Self>;
 
