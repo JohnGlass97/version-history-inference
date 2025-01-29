@@ -113,3 +113,62 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
 
     Ok(tree)
 }
+
+#[cfg(test)]
+mod tests {
+    use dircpy::copy_dir;
+    use render_as_tree::render;
+    use std::fs;
+
+    use super::*;
+    use crate::{
+        rendering::produce_label_tree,
+        test_utils::{append_to_file, UseTestTempDir},
+    };
+
+    #[test]
+    fn handcrafted_1() {
+        let x = UseTestTempDir;
+
+        fs::create_dir_all("test_temp/version_1").unwrap();
+        fs::write("test_temp/version_1/file_a.txt", "file_a\n").unwrap();
+        fs::write("test_temp/version_1/file_b.txt", "file_b\n").unwrap();
+
+        copy_dir("test_temp/version_1", "test_temp/version_2a").unwrap();
+        append_to_file("test_temp/version_2a/file_a.txt", "abc\n").unwrap();
+        append_to_file("test_temp/version_2a/file_b.txt", "def\n").unwrap();
+
+        copy_dir("test_temp/version_1", "test_temp/version_2b").unwrap();
+        append_to_file("test_temp/version_2b/file_a.txt", "123\n").unwrap();
+        append_to_file("test_temp/version_2b/file_b.txt", "456\n").unwrap();
+
+        copy_dir("test_temp/version_2a", "test_temp/version_3").unwrap();
+        append_to_file("test_temp/version_3/file_a.txt", "uvw\n").unwrap();
+        append_to_file("test_temp/version_3/file_b.txt", "xyz\n").unwrap();
+
+        let version_tree = infer_version_tree(Path::new("test_temp")).unwrap();
+        let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
+
+        let expected = TreeNode {
+            value: "Empty".to_owned(),
+            children: vec![TreeNode {
+                value: "version_1".to_owned(),
+                children: vec![
+                    TreeNode {
+                        value: "version_2a".to_owned(),
+                        children: vec![TreeNode {
+                            value: "version_3".to_owned(),
+                            children: vec![],
+                        }],
+                    },
+                    TreeNode {
+                        value: "version_2b".to_owned(),
+                        children: vec![],
+                    },
+                ],
+            }],
+        };
+
+        assert_eq!(name_tree, expected);
+    }
+}
