@@ -57,6 +57,28 @@ impl<T: Eq> PartialEq for TreeNode<T> {
 
 impl<T: Eq> Eq for TreeNode<T> {}
 
+impl<T> TreeNode<T> {
+    pub fn map_with_parent<F, U>(&self, f: &F, parent: Option<&T>) -> TreeNode<U>
+    where
+        F: Fn(&T, Option<&T>) -> U,
+    {
+        TreeNode {
+            value: f(&self.value, parent),
+            children: self
+                .children
+                .iter()
+                .map(|c| c.map_with_parent(f, Some(&self.value)))
+                .collect(),
+        }
+    }
+
+    pub fn map<F, U>(&self, f: &F) -> TreeNode<U>
+    where
+        F: Fn(&T) -> U,
+    {
+        self.map_with_parent(&|x, _| f(x), None)
+    }
+}
 
 impl render_as_tree::Node for TreeNode<String> {
     type Iter<'a> = std::slice::Iter<'a, Self>;
