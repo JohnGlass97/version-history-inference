@@ -85,18 +85,11 @@ pub fn load_versions(dir: &Path) -> io::Result<Vec<Version>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    struct TestCleanup;
-
-    impl Drop for TestCleanup {
-        fn drop(&mut self) {
-            fs::remove_dir_all("test_temp").unwrap();
-        }
-    }
+    use crate::test_utils::UseTestTempDir;
 
     #[test]
     fn test_load_versions() {
-        let x = TestCleanup;
+        let x = UseTestTempDir;
 
         fs::create_dir_all("test_temp/version_1").unwrap();
         fs::create_dir_all("test_temp/version_2").unwrap();
