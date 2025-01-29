@@ -129,6 +129,6 @@ mod tests {
             "file_b_new"
         );
 
-        tmp_dir.close();
+        tmp_dir.close().unwrap();
     }
 }
