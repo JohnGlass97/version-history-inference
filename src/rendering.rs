@@ -3,10 +3,9 @@ use crate::{
     types::{TreeNode, Version},
 };
 
-pub fn produce_label_tree(node: &TreeNode<Version>, parent: Option<&Version>) -> TreeNode<String> {
-    let v = &node.value;
-    TreeNode {
-        value: match parent {
+pub fn produce_label_tree(node: &TreeNode<Version>) -> TreeNode<String> {
+    fn f(v: &Version, parent: Option<&Version>) -> String {
+        match parent {
             Some(p) => {
                 let diff = text_diff_versions(p, v);
                 format!(
@@ -18,11 +17,7 @@ pub fn produce_label_tree(node: &TreeNode<Version>, parent: Option<&Version>) ->
                 )
             }
             None => v.name.to_string(),
-        },
-        children: node
-            .children
-            .iter()
-            .map(|c| produce_label_tree(c, Some(v)))
-            .collect(),
+        }
     }
+    node.map_with_parent(&f, None)
 }

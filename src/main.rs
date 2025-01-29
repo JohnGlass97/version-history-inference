@@ -39,6 +39,6 @@ fn main() {
 
     let version_tree = infer_version_tree(&dir).unwrap();
 
-    let label_tree = produce_label_tree(&version_tree, None);
+    let label_tree = produce_label_tree(&version_tree);
     print!("{}", render(&label_tree).join("\n"));
 }
