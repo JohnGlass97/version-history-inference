@@ -1,6 +1,7 @@
 use chu_liu_edmonds::chu_liu_edmonds;
 use ndarray::{arr2, ArrayView2};
 
+/// Find a minimum spanning arborescence
 pub fn find_msa(scores: ArrayView2<f32>, root_vertex: usize) -> Vec<Option<usize>> {
     let new_scores = &scores * -1.0;
     return chu_liu_edmonds(new_scores.view(), root_vertex);
