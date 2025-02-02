@@ -3,6 +3,7 @@ use std::{collections::HashMap, path::Path};
 
 use crate::types::{FileChange, FileData, TextChange, TextualVersionDiff, Version};
 
+/// Find the text changes between `old` and `new` and push them to `buffer`
 fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
     let diff = TextDiff::from_lines(old, new);
     buffer.extend(
@@ -17,14 +18,17 @@ fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
     );
 }
 
+/// Find what files were added/removed and what text modifications were made
 pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
     let mut added_files: Vec<FileChange> = Vec::new();
     let mut deleted_files: Vec<FileChange> = Vec::new();
     let mut modified_files: Vec<FileChange> = Vec::new();
 
+    // Iterate through old files to find added or modified files
     for (file_name, old_file) in old.files.iter() {
         let old_text = old_file.text_content.as_deref().unwrap_or("");
 
+        // Check for match in new files
         match new.files.get(file_name) {
             Some(new_file) => {
                 let new_text = new_file.text_content.as_deref().unwrap_or("");
@@ -53,9 +57,10 @@ pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
         };
     }
 
+    // Iterate through new files to find deleted files
     for (file_name, new_file) in new.files.iter() {
         match old.files.get(file_name) {
-            Some(_) => (),
+            Some(_) => (), // Already handled in previous for loop
             None => {
                 // File must have been added
                 let new_text = new_file.text_content.as_deref().unwrap_or("");
