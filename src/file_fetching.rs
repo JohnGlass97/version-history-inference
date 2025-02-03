@@ -84,33 +84,28 @@ pub fn load_versions(dir: &Path) -> io::Result<Vec<Version>> {
 
 #[cfg(test)]
 mod tests {
+    use tempdir::TempDir;
+
     use super::*;
-
-    struct TestCleanup;
-
-    impl Drop for TestCleanup {
-        fn drop(&mut self) {
-            fs::remove_dir_all("test_temp").unwrap();
-        }
-    }
 
     #[test]
     fn test_load_versions() {
-        let x = TestCleanup;
+        let tmp_dir = TempDir::new("test_temp").unwrap();
+        let base = tmp_dir.path();
 
-        fs::create_dir_all("test_temp/version_1").unwrap();
-        fs::create_dir_all("test_temp/version_2").unwrap();
-        fs::write("test_temp/version_1/file_a.txt", "file_a").unwrap();
-        fs::write("test_temp/version_1/file_b.txt", "file_b").unwrap();
-        fs::write("test_temp/version_2/file_a.txt", "file_a_new").unwrap();
-        fs::write("test_temp/version_2/file_b.txt", "file_b_new").unwrap();
+        fs::create_dir_all(base.join("version_1")).unwrap();
+        fs::create_dir_all(base.join("version_2")).unwrap();
+        fs::write(base.join("version_1/file_a.txt"), "file_a").unwrap();
+        fs::write(base.join("version_1/file_b.txt"), "file_b").unwrap();
+        fs::write(base.join("version_2/file_a.txt"), "file_a_new").unwrap();
+        fs::write(base.join("version_2/file_b.txt"), "file_b_new").unwrap();
 
-        let versions = load_versions(Path::new("test_temp")).unwrap();
+        let versions = load_versions(base).unwrap();
 
         assert_eq!(versions.len(), 2);
 
         let version_1 = &versions.iter().find(|v| v.name == "version_1").unwrap();
-        assert_eq!(version_1.path, Path::new("test_temp/version_1").into());
+        assert_eq!(version_1.path, base.join("version_1").into());
         let files_1 = &version_1.files;
         assert_eq!(
             files_1["file_a.txt"].text_content.as_ref().unwrap(),
@@ -123,7 +118,7 @@ mod tests {
 
         let version_2 = &versions.iter().find(|v| v.name == "version_2").unwrap();
         assert_eq!(version_2.name, "version_2");
-        assert_eq!(version_2.path, Path::new("test_temp/version_2").into());
+        assert_eq!(version_2.path, base.join("version_2").into());
         let files_2 = &version_2.files;
         assert_eq!(
             files_2["file_a.txt"].text_content.as_ref().unwrap(),
@@ -133,5 +128,7 @@ mod tests {
             files_2["file_b.txt"].text_content.as_ref().unwrap(),
             "file_b_new"
         );
+
+        tmp_dir.close().unwrap();
     }
 }

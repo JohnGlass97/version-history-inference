@@ -14,6 +14,9 @@ mod file_fetching;
 mod rendering;
 mod types;
 
+#[cfg(test)]
+mod test_utils;
+
 fn parse_args() -> PathBuf {
     let matches = command!()
         .subcommand(
@@ -36,6 +39,6 @@ fn main() {
 
     let version_tree = infer_version_tree(&dir).unwrap();
 
-    let label_tree = produce_label_tree(&version_tree, None);
+    let label_tree = produce_label_tree(&version_tree);
     print!("{}", render(&label_tree).join("\n"));
 }

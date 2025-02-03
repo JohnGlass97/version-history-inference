@@ -113,3 +113,121 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
 
     Ok(tree)
 }
+
+#[cfg(test)]
+mod tests {
+    use dircpy::copy_dir;
+    use render_as_tree::render;
+    use std::fs;
+    use tempdir::TempDir;
+
+    use super::*;
+    use crate::{rendering::produce_label_tree, test_utils::append_to_file};
+
+    #[test]
+    fn handcrafted_1() {
+        let tmp_dir = TempDir::new("test_temp").unwrap();
+        let base = tmp_dir.path();
+
+        fs::create_dir_all(base.join("version_1")).unwrap();
+        fs::write(base.join("version_1/file_a.txt"), "file_a\n").unwrap();
+        fs::write(base.join("version_1/file_b.txt"), "file_b\n").unwrap();
+
+        copy_dir(base.join("version_1"), base.join("version_2a")).unwrap();
+        append_to_file(base.join("version_2a/file_a.txt"), "abc\n").unwrap();
+        append_to_file(base.join("version_2a/file_b.txt"), "def\n").unwrap();
+
+        copy_dir(base.join("version_1"), base.join("version_2b")).unwrap();
+        append_to_file(base.join("version_2b/file_a.txt"), "123\n").unwrap();
+        append_to_file(base.join("version_2b/file_b.txt"), "456\n").unwrap();
+
+        copy_dir(base.join("version_2a"), base.join("version_3")).unwrap();
+        append_to_file(base.join("version_3/file_a.txt"), "uvw\n").unwrap();
+        append_to_file(base.join("version_3/file_b.txt"), "xyz\n").unwrap();
+
+        let version_tree = infer_version_tree(base).unwrap();
+        let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
+
+        let expected = TreeNode {
+            value: "Empty".to_owned(),
+            children: vec![TreeNode {
+                value: "version_1".to_owned(),
+                children: vec![
+                    TreeNode {
+                        value: "version_2a".to_owned(),
+                        children: vec![TreeNode {
+                            value: "version_3".to_owned(),
+                            children: vec![],
+                        }],
+                    },
+                    TreeNode {
+                        value: "version_2b".to_owned(),
+                        children: vec![],
+                    },
+                ],
+            }],
+        };
+
+        assert_eq!(name_tree, expected);
+
+        tmp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn handcrafted_2() {
+        let tmp_dir = TempDir::new("test_temp").unwrap();
+        let base = tmp_dir.path();
+
+        fs::create_dir_all(base.join("version_1")).unwrap();
+        fs::write(
+            base.join("version_1/file_a.txt"),
+            "This\nis the\nfirst\nversion\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(base.join("version_2")).unwrap();
+        fs::write(
+            base.join("version_2/file_a.txt"),
+            "This\nis\nthe\nsecond\nversion!\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(base.join("version_3")).unwrap();
+        fs::write(
+            base.join("version_3/file_a.txt"),
+            "Now\nthis\nis\nthe\nthird\nversion!\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(base.join("version_4")).unwrap();
+        fs::write(
+            base.join("version_4/file_a.txt"),
+            "Now\nthis\nis\nthe\nversion\nafter\nthe\nthird\n",
+        )
+        .unwrap();
+
+        let version_tree = infer_version_tree(base).unwrap();
+        let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
+
+        let expected = TreeNode {
+            value: "Empty".to_owned(),
+            children: vec![TreeNode {
+                value: "version_1".to_owned(),
+                children: vec![TreeNode {
+                    value: "version_2".to_owned(),
+                    children: vec![TreeNode {
+                        value: "version_3".to_owned(),
+                        children: vec![TreeNode {
+                            value: "version_4".to_owned(),
+                            children: vec![],
+                        }],
+                    }],
+                }],
+            }],
+        };
+
+        assert_eq!(name_tree, expected);
+
+        tmp_dir.close().unwrap();
+    }
+}
