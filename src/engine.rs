@@ -181,7 +181,7 @@ mod tests {
         fs::create_dir_all(base.join("version_1")).unwrap();
         fs::write(
             base.join("version_1/file_a.txt"),
-            "This\nis\nthe\nfirst\nversion\n",
+            "This\nis the\nfirst\nversion\n",
         )
         .unwrap();
 
