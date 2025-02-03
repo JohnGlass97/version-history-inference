@@ -11,12 +11,16 @@ pub struct TextChange {
 }
 
 #[derive(Debug)]
+pub struct FileChange {
+    pub filename: String,
+    pub changes: Vec<TextChange>,
+}
+
+#[derive(Debug)]
 pub struct TextualVersionDiff {
-    pub added_files: Vec<String>,
-    pub deleted_files: Vec<String>,
-    pub add_delete_changes: Vec<TextChange>,
-    pub modified_files: Vec<String>,
-    pub modify_changes: Vec<TextChange>,
+    pub added_files: Vec<FileChange>,
+    pub deleted_files: Vec<FileChange>,
+    pub modified_files: Vec<FileChange>,
 }
 
 #[derive(Debug)]

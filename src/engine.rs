@@ -1,4 +1,9 @@
-use std::{collections::HashMap, io, path::Path};
+use std::{
+    collections::HashMap,
+    io,
+    ops::{Add, AddAssign},
+    path::Path,
+};
 
 use ndarray::{arr2, Array2};
 use similar::ChangeTag;
@@ -7,56 +12,58 @@ use crate::{
     diffing::text_diff_versions,
     edmonds::find_msa,
     file_fetching::load_versions,
-    types::{TextChange, TextualVersionDiff, TreeNode, Version},
+    types::{FileChange, TextChange, TextualVersionDiff, TreeNode, Version},
 };
 
-fn distance_heuristic(
-    added: usize,
-    deleted: usize,
-    add_delete_changes: usize,
-    modified: usize,
-    modify_add_changes: usize,
-    modify_delete_changes: usize,
-) -> f32 {
-    0.0 + (added as f32) * 2.0
-        + (deleted as f32) * 4.0
-        + (modified as f32) * 1.0
-        + (add_delete_changes.min(50) as f32) * 0.05
-        + (modify_add_changes.min(50) as f32) * 0.05
-        + (modify_delete_changes.min(50) as f32) * 0.1
-}
+// Penalties
+const ADD_FILE_P: f32 = 2.;
+const DELETE_FILE_P: f32 = 4.;
+const MODIFY_FILE_P: f32 = 1.;
+const ADD_LINE_P: f32 = 0.02;
+const DELETE_LINE_P: f32 = 0.05;
 
 fn count_tag(changes: &Vec<TextChange>, tag: ChangeTag) -> usize {
     changes.iter().filter(|c| c.tag == tag).count()
 }
 
-fn calculate_distances(text_diff: &TextualVersionDiff) -> (f32, f32) {
-    let added = text_diff.added_files.len();
-    let deleted = text_diff.deleted_files.len();
-    let add_delete_changes = text_diff.add_delete_changes.len();
-    let modified = text_diff.modified_files.len();
+struct Pair(f32, f32);
 
-    let modify_add_changes = count_tag(&text_diff.modify_changes, ChangeTag::Insert);
-    let modify_delete_changes = count_tag(&text_diff.modify_changes, ChangeTag::Delete);
+impl AddAssign for Pair {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
 
-    let forwards = distance_heuristic(
-        added,
-        deleted,
-        add_delete_changes,
-        modified,
-        modify_add_changes,
-        modify_delete_changes,
-    );
-    let backwards = distance_heuristic(
-        deleted,
-        added,
-        add_delete_changes,
-        modified,
-        modify_delete_changes,
-        modify_add_changes,
-    );
+fn file_heuristic(file_change: &FileChange) -> Pair {
+    let adds = count_tag(&file_change.changes, ChangeTag::Insert).min(50) as f32;
+    let deletes = count_tag(&file_change.changes, ChangeTag::Delete).min(50) as f32;
 
-    (forwards, backwards)
+    Pair(
+        adds * ADD_LINE_P + deletes * DELETE_LINE_P,
+        adds * DELETE_LINE_P + deletes * ADD_LINE_P,
+    )
+}
+
+fn calculate_distances(text_diff: &TextualVersionDiff) -> Pair {
+    let mut forward_backward = Pair(0., 0.);
+
+    for file_change in &text_diff.added_files {
+        forward_backward += Pair(ADD_FILE_P, DELETE_FILE_P);
+        forward_backward += file_heuristic(file_change);
+    }
+
+    for file_change in &text_diff.deleted_files {
+        forward_backward += Pair(DELETE_FILE_P, ADD_FILE_P);
+        forward_backward += file_heuristic(file_change);
+    }
+
+    for file_change in &text_diff.modified_files {
+        forward_backward += Pair(MODIFY_FILE_P, MODIFY_FILE_P);
+        forward_backward += file_heuristic(file_change);
+    }
+
+    forward_backward
 }
 
 fn assemble_forest<T>(
@@ -96,7 +103,7 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
 
             let text_diff = text_diff_versions(version_a, version_b);
 
-            let (a_to_b, b_to_a) = calculate_distances(&text_diff);
+            let Pair(a_to_b, b_to_a) = calculate_distances(&text_diff);
 
             distances[(i, j)] = a_to_b;
             distances[(j, i)] = b_to_a;
