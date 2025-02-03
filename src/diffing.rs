@@ -73,6 +73,8 @@ pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     #[test]

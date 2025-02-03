@@ -19,6 +19,8 @@ pub fn msa_to_string(result: &Vec<Option<usize>>) -> String {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     #[test]

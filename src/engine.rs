@@ -116,6 +116,8 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use dircpy::copy_dir;
     use render_as_tree::render;
     use std::fs;

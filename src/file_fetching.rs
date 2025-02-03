@@ -84,6 +84,8 @@ pub fn load_versions(dir: &Path) -> io::Result<Vec<Version>> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use tempdir::TempDir;
 
     use super::*;
