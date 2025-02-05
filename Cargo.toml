@@ -8,6 +8,7 @@ chu-liu-edmonds = "0.1.0"
 clap = { version = "4.5.24", features = ["cargo"] }
 dircpy = "0.3.19"
 ndarray = "0.15"
+pretty_assertions = "1.4.1"
 render_as_tree = "0.2.1"
 similar = "2.6.0"
 tempdir = "0.3.7"

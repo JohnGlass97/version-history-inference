@@ -1,7 +1,7 @@
 use similar::{ChangeTag, TextDiff};
 use std::{collections::HashMap, path::Path};
 
-use crate::types::{FileData, TextChange, TextualVersionDiff, Version};
+use crate::types::{FileChange, FileData, TextChange, TextualVersionDiff, Version};
 
 fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
     let diff = TextDiff::from_lines(old, new);
@@ -18,12 +18,9 @@ fn push_text_diff_changes(old: &str, new: &str, buffer: &mut Vec<TextChange>) {
 }
 
 pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
-    let mut added_files: Vec<String> = Vec::new();
-    let mut deleted_files: Vec<String> = Vec::new();
-    let mut add_delete_changes: Vec<TextChange> = Vec::new();
-
-    let mut modified_files: Vec<String> = Vec::new();
-    let mut modify_changes: Vec<TextChange> = Vec::new();
+    let mut added_files: Vec<FileChange> = Vec::new();
+    let mut deleted_files: Vec<FileChange> = Vec::new();
+    let mut modified_files: Vec<FileChange> = Vec::new();
 
     for (file_name, old_file) in old.files.iter() {
         let old_text = old_file.text_content.as_deref().unwrap_or("");
@@ -33,17 +30,25 @@ pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
                 let new_text = new_file.text_content.as_deref().unwrap_or("");
 
                 if old_text != new_text {
-                    modified_files.push(file_name.to_string());
-                }
+                    let mut changes: Vec<TextChange> = Vec::new();
+                    push_text_diff_changes(old_text, new_text, &mut changes);
 
-                push_text_diff_changes(old_text, new_text, &mut modify_changes);
+                    modified_files.push(FileChange {
+                        filename: file_name.to_string(),
+                        changes,
+                    });
+                }
             }
             None => {
                 // No match in new version, file was deleted (or renamed??)
                 // TODO: Consider renamed files
-                deleted_files.push(file_name.to_string());
+                let mut changes: Vec<TextChange> = Vec::new();
+                push_text_diff_changes(old_text, "", &mut changes);
 
-                push_text_diff_changes(old_text, "", &mut add_delete_changes);
+                deleted_files.push(FileChange {
+                    filename: file_name.to_string(),
+                    changes,
+                });
             }
         };
     }
@@ -55,9 +60,13 @@ pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
                 // File must have been added
                 let new_text = new_file.text_content.as_deref().unwrap_or("");
 
-                added_files.push(file_name.to_string());
+                let mut changes: Vec<TextChange> = Vec::new();
+                push_text_diff_changes("", new_text, &mut changes);
 
-                push_text_diff_changes("", new_text, &mut add_delete_changes);
+                added_files.push(FileChange {
+                    filename: file_name.to_string(),
+                    changes,
+                });
             }
         };
     }
@@ -65,14 +74,14 @@ pub fn text_diff_versions(old: &Version, new: &Version) -> TextualVersionDiff {
     return TextualVersionDiff {
         added_files,
         deleted_files,
-        add_delete_changes,
         modified_files,
-        modify_changes,
     };
 }
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     #[test]
@@ -178,10 +187,16 @@ mod tests {
 
         let diff = text_diff_versions(&old, &new);
 
-        assert_eq!(diff.added_files, ["added"]);
-        assert_eq!(diff.deleted_files, ["deleted"]);
-        assert_eq!(diff.modified_files, ["modified"]);
-        assert_eq!(diff.add_delete_changes.len(), 2);
-        assert_eq!(diff.modify_changes.len(), 2);
+        assert_eq!(diff.added_files.len(), 1);
+        assert_eq!(diff.added_files[0].filename, "added");
+        assert_eq!(diff.added_files[0].changes.len(), 1);
+
+        assert_eq!(diff.deleted_files.len(), 1);
+        assert_eq!(diff.deleted_files[0].filename, "deleted");
+        assert_eq!(diff.deleted_files[0].changes.len(), 1);
+
+        assert_eq!(diff.modified_files.len(), 1);
+        assert_eq!(diff.modified_files[0].filename, "modified");
+        assert_eq!(diff.modified_files[0].changes.len(), 2);
     }
 }
