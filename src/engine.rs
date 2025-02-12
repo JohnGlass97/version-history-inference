@@ -98,6 +98,10 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
 
     for j in 1..n {
         for i in 0..j {
+            if i == j {
+                continue;
+            }
+
             let version_a = &versions[i];
             let version_b = &versions[j];
 
@@ -131,7 +135,10 @@ mod tests {
     use tempdir::TempDir;
 
     use super::*;
-    use crate::{rendering::produce_label_tree, test_utils::append_to_file};
+    use crate::{
+        rendering::produce_label_tree,
+        test_utils::{append_to_file, Commit},
+    };
 
     #[test]
     fn handcrafted_1() {
