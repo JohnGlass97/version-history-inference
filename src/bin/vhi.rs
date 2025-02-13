@@ -1,21 +1,10 @@
 #![allow(unused)]
 
+use clap::{arg, command, value_parser, Command};
+use render_as_tree::render;
 use std::path::{Path, PathBuf};
 
-use clap::{arg, command, value_parser, Command};
-use engine::infer_version_tree;
-use render_as_tree::render;
-use rendering::produce_label_tree;
-
-mod diffing;
-mod edmonds;
-mod engine;
-mod file_fetching;
-mod rendering;
-mod types;
-
-#[cfg(test)]
-mod test_utils;
+use version_history_inference::{engine::infer_version_tree, rendering::produce_label_tree};
 
 fn parse_args() -> PathBuf {
     let matches = command!()
