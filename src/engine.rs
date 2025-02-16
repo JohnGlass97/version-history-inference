@@ -135,10 +135,7 @@ mod tests {
     use tempdir::TempDir;
 
     use super::*;
-    use crate::{
-        rendering::produce_label_tree,
-        test_utils::{append_to_file, Commit},
-    };
+    use crate::{rendering::produce_label_tree, test_utils::append_to_file};
 
     #[test]
     fn handcrafted_1() {
