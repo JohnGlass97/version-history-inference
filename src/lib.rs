@@ -14,5 +14,5 @@ pub mod file_fetching;
 pub mod rendering;
 pub mod types;
 
-#[cfg(test)]
 pub mod test_utils;
+pub mod testing;
