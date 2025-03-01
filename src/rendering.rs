@@ -9,7 +9,7 @@ pub fn produce_label_tree(node: &TreeNode<Version>) -> TreeNode<String> {
             Some(p) => {
                 let diff = text_diff_versions(p, v);
                 format!(
-                    "{} - FILES: {} added, {} removed, {} modified",
+                    "{} - FILES: {} A, {} D, {} M",
                     v.name,
                     diff.added_files.len(),
                     diff.deleted_files.len(),
