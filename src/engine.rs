@@ -66,6 +66,8 @@ fn calculate_distances(text_diff: &TextualVersionDiff) -> Pair {
     forward_backward
 }
 
+/// Combine tree in vector of parents form and data vector
+/// to get TreeNode vector (a forest)
 fn assemble_forest<T>(
     parents: &Vec<Option<usize>>,
     parent: Option<usize>,

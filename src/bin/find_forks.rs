@@ -44,6 +44,7 @@ async fn main() {
     let mut commits_hash_map: HashMap<String, HashSet<Commit>> = HashMap::new();
     let mut stack = vec![version_ref_tree];
 
+    // Depth first search of fork tree to get all commits that need to be cloned
     while !stack.is_empty() {
         let node = stack.pop().unwrap();
         let key = format!("{}/{}", node.value.owner, node.value.repo);
