@@ -116,10 +116,12 @@ pub async fn build_fork_tree(
     // HEAD is not a fork, but easier to treat it the same as one
     fork_tree_map.insert(0, head_tree_node);
 
+    // Find fork point of each fork and recurse through its forks
     for fork in forks {
         let fork_owner = &fork.owner.expect("No owner for repo").login;
         let fork_repo = &fork.name;
 
+        // behind_by use for ordering the fork points
         let fp = find_fork_point(octo, owner, repo, fork_owner).await;
         let (behind_by, sha) = match fp {
             Some((x, y)) => (x, y),
@@ -141,10 +143,13 @@ pub async fn build_fork_tree(
 
         match fork_tree_map.get_mut(&behind_by) {
             Some(t) => {
+                // Fork point for current fork in loop matches the
+                // fork point of a previous iteration
                 assert_eq!(t.value.commit, sha);
                 t.children.push(fork_tree);
             }
             None => {
+                // New fork point
                 fork_tree_map.insert(
                     behind_by,
                     TreeNode {
@@ -170,6 +175,7 @@ pub async fn build_fork_tree(
     let mut next_version_no = ordered_fork_trees.len() as u8;
     let mut tree = ordered_fork_trees.next().unwrap();
 
+    // Number the different fork points
     for mut fork_tree in ordered_fork_trees {
         tree.value.version_no = next_version_no;
         next_version_no -= 1;
