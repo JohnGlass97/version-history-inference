@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt, path::Path};
 
+use serde::Serialize;
 use similar::ChangeTag;
 
 #[derive(Debug)]
@@ -35,7 +36,7 @@ pub struct Version {
     pub files: HashMap<String, FileData>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TreeNode<T> {
     pub value: T,
     pub children: Vec<TreeNode<T>>,

@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use octocrab::{models::Repository, params::repos::forks::Sort, Octocrab};
+use serde::Serialize;
 
 use crate::types::TreeNode;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct VersionRef {
     pub owner: String,
     pub repo: String,
