@@ -187,3 +187,22 @@ pub async fn build_fork_tree(
 
     Some(tree)
 }
+
+pub fn gen_version_name(version_ref: &VersionRef) -> String {
+    format!(
+        "{}-{}-{}-v{}",
+        version_ref.owner,
+        version_ref.repo,
+        if version_ref.is_head { "HEAD" } else { "OLD" },
+        version_ref.version_no,
+    )
+}
+
+pub fn split_full_name(full_name: &str) -> (&str, &str) {
+    let [owner, repo] = full_name
+        .split("/")
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("Repo full names must have exactly one '/'");
+    (owner, repo)
+}
