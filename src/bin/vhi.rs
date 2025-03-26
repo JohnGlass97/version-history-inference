@@ -4,7 +4,11 @@ use clap::{arg, command, value_parser, Command};
 use render_as_tree::render;
 use std::path::{Path, PathBuf};
 
-use version_history_inference::{engine::infer_version_tree, rendering::produce_label_tree};
+use version_history_inference::{
+    engine::infer_version_tree,
+    rendering::produce_label_tree,
+    utils::{start_console_timer, stop_console_timer},
+};
 
 fn parse_args() -> PathBuf {
     let matches = command!()
@@ -26,7 +30,9 @@ fn parse_args() -> PathBuf {
 fn main() {
     let dir = parse_args();
 
+    let timer = start_console_timer();
     let version_tree = infer_version_tree(&dir).unwrap();
+    stop_console_timer(timer);
 
     let label_tree = produce_label_tree(&version_tree);
     print!("{}", render(&label_tree).join("\n"));
