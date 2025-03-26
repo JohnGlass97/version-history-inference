@@ -55,7 +55,7 @@ async fn main() {
         serde_json::from_str(&fork_trees_json).unwrap();
 
     for (full_name, fork_tree) in fork_trees {
-        let root_repo = split_full_name(&full_name).0.to_owned();
+        let root_repo = split_full_name(&full_name).1.to_owned();
         clone_forks(root_repo, fork_tree).await;
     }
 }
