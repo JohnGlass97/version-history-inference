@@ -10,22 +10,14 @@ use std::{
 use octocrab::Octocrab;
 use render_as_tree::render;
 use version_history_inference::{
-    testing::forks::{build_fork_tree, split_full_name, VersionRef},
+    testing::forks::{build_fork_tree, gen_version_display_name, split_full_name, VersionRef},
     types::TreeNode,
 };
 
 async fn find_forks(octo: &Octocrab, owner: &str, repo: &str) -> TreeNode<VersionRef> {
     let version_ref_tree = build_fork_tree(octo, owner, repo, 2, 2).await.unwrap();
 
-    let label_tree = version_ref_tree.map(&|t| {
-        format!(
-            "{}/{} - {}: v{}",
-            t.owner,
-            t.repo,
-            if t.is_head { "HEAD" } else { "OLD" },
-            t.version_no
-        )
-    });
+    let label_tree = version_ref_tree.map(&|t| gen_version_display_name(t));
     print!("{}\n", render(&label_tree).join("\n"));
 
     version_ref_tree
