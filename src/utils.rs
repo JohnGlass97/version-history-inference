@@ -16,7 +16,7 @@ pub fn start_console_timer() -> ConsoleTimer {
         while running_clone.load(std::sync::atomic::Ordering::Relaxed) {
             let elapsed = start.elapsed();
             print!(
-                "\nElapsed: {:02}:{:02}:{:02}",
+                "\rElapsed: {:02}:{:02}:{:02}",
                 elapsed.as_secs() / 3600,
                 (elapsed.as_secs() / 60) % 60,
                 elapsed.as_secs() % 60
