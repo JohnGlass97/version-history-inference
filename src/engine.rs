@@ -106,10 +106,6 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
 
     for j in 1..n {
         for i in 0..j {
-            if i == j {
-                continue;
-            }
-
             let arc = Arc::clone(&versions_arc);
 
             handles.push(thread::spawn(move || {
