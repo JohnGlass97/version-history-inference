@@ -1,8 +1,10 @@
 use std::{
     collections::HashMap,
     io,
-    ops::{Add, AddAssign},
+    ops::AddAssign,
     path::Path,
+    sync::Arc,
+    thread::{self},
 };
 
 use ndarray::{arr2, Array2};
@@ -96,7 +98,11 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
     versions.insert(0, null_version);
 
     let n = versions.len();
+
     let mut distances: Array2<f32> = Array2::zeros((n, n));
+
+    let mut handles = Vec::new();
+    let versions_arc = Arc::new(versions);
 
     for j in 1..n {
         for i in 0..j {
@@ -104,17 +110,27 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
                 continue;
             }
 
-            let version_a = &versions[i];
-            let version_b = &versions[j];
+            let arc = Arc::clone(&versions_arc);
 
-            let text_diff = text_diff_versions(version_a, version_b);
+            handles.push(thread::spawn(move || {
+                let version_a = &arc[i];
+                let version_b = &arc[j];
 
-            let Pair(a_to_b, b_to_a) = calculate_distances(&text_diff);
-
-            distances[(i, j)] = a_to_b;
-            distances[(j, i)] = b_to_a;
+                let text_diff = text_diff_versions(version_a, version_b);
+                (i, j, calculate_distances(&text_diff))
+            }));
         }
     }
+
+    for handle in handles {
+        let (i, j, res) = handle.join().unwrap();
+        let Pair(a_to_b, b_to_a) = res;
+
+        distances[(i, j)] = a_to_b;
+        distances[(j, i)] = b_to_a;
+    }
+
+    let versions = Arc::try_unwrap(versions_arc).unwrap();
 
     let msa = find_msa(distances.view(), 0);
 
