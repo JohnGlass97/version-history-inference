@@ -32,4 +32,5 @@ pub fn stop_console_timer(timer: ConsoleTimer) {
     let ConsoleTimer(handle, running) = timer;
     running.store(false, std::sync::atomic::Ordering::Relaxed);
     handle.join().unwrap();
+    println!();
 }
