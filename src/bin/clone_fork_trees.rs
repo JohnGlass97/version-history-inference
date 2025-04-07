@@ -6,7 +6,7 @@ use std::{
 };
 
 use version_history_inference::{
-    testing::{
+    evaluation::{
         cloning::{clone_commits_drop_git, Commit},
         forks::{gen_version_name, split_full_name, VersionRef},
     },

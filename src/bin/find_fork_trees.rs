@@ -10,7 +10,7 @@ use std::{
 use octocrab::Octocrab;
 use render_as_tree::render;
 use version_history_inference::{
-    testing::forks::{build_fork_tree, gen_version_display_name, split_full_name, VersionRef},
+    evaluation::forks::{build_fork_tree, gen_version_display_name, split_full_name, VersionRef},
     types::TreeNode,
 };
 

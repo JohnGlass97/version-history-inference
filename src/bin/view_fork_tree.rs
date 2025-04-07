@@ -2,7 +2,7 @@ use std::{collections::HashMap, env, fs};
 
 use render_as_tree::render;
 use version_history_inference::{
-    testing::forks::{gen_version_display_name, VersionRef},
+    evaluation::forks::{gen_version_display_name, VersionRef},
     types::TreeNode,
 };
 
