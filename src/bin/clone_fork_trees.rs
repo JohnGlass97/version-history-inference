@@ -13,7 +13,7 @@ use version_history_inference::{
     types::TreeNode,
 };
 
-async fn clone_forks(root_repo: String, version_ref_tree: TreeNode<VersionRef>) {
+async fn clone_forks(root_name: String, version_ref_tree: TreeNode<VersionRef>) {
     // HashSet shouldn't be needed as commits shouldn't
     // be duplicated but better to be safe
     let mut commits_hash_map: HashMap<String, HashSet<Commit>> = HashMap::new();
@@ -44,7 +44,7 @@ async fn clone_forks(root_repo: String, version_ref_tree: TreeNode<VersionRef>) 
     for (repo_full_name, commit_set) in commits_hash_map.into_iter() {
         let url = format!("https://github.com/{repo_full_name}.git");
         let commits: Vec<Commit> = commit_set.into_iter().collect();
-        clone_commits_drop_git(&url, &commits, format!("./test_repos/{root_repo}-forks"));
+        clone_commits_drop_git(&url, &commits, format!("./test_repos/{root_name}"));
     }
 }
 
@@ -54,8 +54,7 @@ async fn main() {
     let fork_trees: HashMap<String, TreeNode<VersionRef>> =
         serde_json::from_str(&fork_trees_json).unwrap();
 
-    for (full_name, fork_tree) in fork_trees {
-        let root_repo = split_full_name(&full_name).1.to_owned();
-        clone_forks(root_repo, fork_tree).await;
+    for (root_name, fork_tree) in fork_trees {
+        clone_forks(root_name, fork_tree).await;
     }
 }

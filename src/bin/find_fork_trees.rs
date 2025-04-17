@@ -39,7 +39,7 @@ async fn main() {
         let (owner, repo) = split_full_name(full_name);
 
         let tree = find_forks(&octo, owner, repo).await;
-        fork_trees.insert(full_name.to_owned(), tree);
+        fork_trees.insert(format!("{repo}-forks"), tree);
     }
 
     fs::create_dir_all("./test_repos");
