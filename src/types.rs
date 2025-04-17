@@ -50,6 +50,12 @@ pub struct DiffInfo {
     pub modified: usize,
 }
 
+impl DiffInfo {
+    pub fn no_changes(&self) -> bool {
+        self.added == 0 && self.deleted == 0 && self.modified == 0
+    }
+}
+
 impl<T: Eq> PartialEq for TreeNode<T> {
     fn eq(&self, other: &Self) -> bool {
         if self.value != other.value || self.children.len() != other.children.len() {

@@ -318,6 +318,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "disjoint"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c37b399c91d093763e38c7a57a740e0005e30e5aff7132e791aada5eef3fed99"
+
+[[package]]
 name = "displaydoc"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1837,6 +1843,7 @@ dependencies = [
  "chu-liu-edmonds",
  "clap",
  "dircpy",
+ "disjoint",
  "git2",
  "ndarray",
  "octocrab",
