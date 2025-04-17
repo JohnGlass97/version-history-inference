@@ -42,6 +42,14 @@ pub struct TreeNode<T> {
     pub children: Vec<TreeNode<T>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffInfo {
+    pub name: String,
+    pub added: usize,
+    pub deleted: usize,
+    pub modified: usize,
+}
+
 impl<T: Eq> PartialEq for TreeNode<T> {
     fn eq(&self, other: &Self) -> bool {
         if self.value != other.value || self.children.len() != other.children.len() {
