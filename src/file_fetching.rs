@@ -2,8 +2,12 @@ use std::collections::HashMap;
 use std::fs::{self, DirEntry};
 use std::io;
 use std::path::Path;
+use std::time::Duration;
+
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use crate::types::{FileData, Version};
+use crate::utils::PB_BAR_STYLE;
 
 fn walk_dir(dir: &Path, file_paths: &mut Vec<Box<Path>>) -> io::Result<()> {
     if dir.is_dir() {
@@ -49,15 +53,24 @@ fn get_relative_path<'a>(path: &'a Path, base: &'a Path) -> &'a Path {
         .expect("Failed to strip path prefix")
 }
 
-pub fn load_versions(dir: &Path) -> io::Result<Vec<Version>> {
+pub fn load_versions(dir: &Path, mp: &MultiProgress) -> io::Result<Vec<Version>> {
     let version_paths = dirs_in_dir(dir)?;
     let mut versions: Vec<Version> = Vec::new();
 
-    for version_path in version_paths {
+    let pb = mp.add(ProgressBar::new(version_paths.len() as u64));
+    pb.set_style(PB_BAR_STYLE.clone());
+    pb.set_prefix("Loading versions");
+    pb.enable_steady_tick(Duration::from_millis(100));
+
+    for (i, version_path) in version_paths.into_iter().enumerate() {
         let mut file_paths: Vec<Box<Path>> = Vec::new();
         walk_dir(&version_path, &mut file_paths);
 
         let mut files: HashMap<String, FileData> = HashMap::new();
+
+        let version_pb = mp.add(ProgressBar::new(file_paths.len() as u64));
+        version_pb.set_style(PB_BAR_STYLE.clone());
+        version_pb.set_prefix(format!("Version {}", i + 1));
 
         for file_path in file_paths {
             let file_rel_path = get_relative_path(&file_path, &version_path);
@@ -67,6 +80,8 @@ pub fn load_versions(dir: &Path) -> io::Result<Vec<Version>> {
                     text_content: read_file_to_str_opt(&file_path)?,
                 },
             );
+
+            version_pb.inc(1);
         }
 
         let version_rel_path = get_relative_path(&version_path, &dir);
@@ -77,7 +92,11 @@ pub fn load_versions(dir: &Path) -> io::Result<Vec<Version>> {
             path: version_path,
             files,
         });
+
+        pb.inc(1);
     }
+
+    pb.finish();
 
     Ok(versions)
 }
@@ -102,7 +121,7 @@ mod tests {
         fs::write(base.join("version_2/file_a.txt"), "file_a_new").unwrap();
         fs::write(base.join("version_2/file_b.txt"), "file_b_new").unwrap();
 
-        let versions = load_versions(base).unwrap();
+        let versions = load_versions(base, &MultiProgress::new()).unwrap();
 
         assert_eq!(versions.len(), 2);
 
