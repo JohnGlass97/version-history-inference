@@ -177,6 +177,13 @@ fn main() {
             value: "Empty".to_string(),
             children: vec![fork_tree.map(&gen_version_name)],
         };
+
+        let Ok(fork_tree_json) =
+            fs::read_to_string(format!("./test_repos/{root_name}/version_tree.json"))
+        else {
+            println!("Skipping {root_name} as could not load in version_tree.json");
+            continue;
+        };
         let inferred_fork_tree: TreeNode<DiffInfo> = serde_json::from_str(&fork_tree_json).unwrap();
 
         // println!("{}", render(&ground_fork_tree).join("\n"));
