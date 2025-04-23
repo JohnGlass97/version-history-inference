@@ -81,7 +81,7 @@ fn assemble_forest<T>(
     for (this, p) in parents.iter().enumerate() {
         if *p == parent {
             forest.push(TreeNode {
-                value: std::mem::replace(&mut data[this], None).unwrap(),
+                value: data[this].take().unwrap(),
                 children: assemble_forest(parents, Some(this), data),
             });
         }
