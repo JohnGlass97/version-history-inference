@@ -11,14 +11,29 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use crate::types::{FileData, Version};
 use crate::utils::PB_BAR_STYLE;
 
-fn walk_dir(dir: &Path, file_paths: &mut Vec<Box<Path>>) -> io::Result<()> {
+fn walk_dir(
+    dir: &Path,
+    file_paths: &mut Vec<Box<Path>>,
+    extension: Option<&str>,
+    recursive: bool,
+) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                walk_dir(&path, file_paths)?;
+                if recursive {
+                    walk_dir(&path, file_paths, extension, true)?;
+                }
             } else {
+                if let Some(expected_ext) = extension {
+                    let Some(actual_ext) = path.extension().or(path.file_name()) else {
+                        continue;
+                    };
+                    if actual_ext.to_string_lossy() != expected_ext {
+                        continue;
+                    }
+                }
                 file_paths.push(path.into());
             }
         }
@@ -66,7 +81,7 @@ pub fn load_versions(dir: &Path, mp: &MultiProgress) -> io::Result<Vec<Version>>
 
     for (i, version_path) in version_paths.into_iter().enumerate() {
         let mut file_paths: Vec<Box<Path>> = Vec::new();
-        walk_dir(&version_path, &mut file_paths);
+        walk_dir(&version_path, &mut file_paths, None, true);
 
         let version_pb = Arc::new(mp.add(ProgressBar::new(file_paths.len() as u64)));
         version_pb.set_style(PB_BAR_STYLE.clone());
@@ -101,8 +116,49 @@ pub fn load_versions(dir: &Path, mp: &MultiProgress) -> io::Result<Vec<Version>>
     Ok(versions)
 }
 
+pub fn load_file_versions(
+    dir: &Path,
+    extension: &str,
+    recursive: bool,
+    mp: &MultiProgress,
+) -> io::Result<Vec<Version>> {
+    let norm_ext = extension.strip_prefix(".").unwrap_or(extension);
+
+    let mut file_paths = vec![];
+    walk_dir(dir, &mut file_paths, Some(norm_ext), recursive)?;
+
+    let pb = mp.add(ProgressBar::new(file_paths.len() as u64));
+    pb.set_style(PB_BAR_STYLE.clone());
+    pb.set_prefix("Loading versions");
+    pb.enable_steady_tick(Duration::from_millis(100));
+
+    let files: Vec<Version> = file_paths
+        .par_iter()
+        .map(|file_path| {
+            let version_rel_path = get_relative_path(&file_path, &dir);
+            let version_name = version_rel_path.to_string_lossy().to_string();
+
+            let file_data = FileData {
+                text_content: read_file_to_str_opt(&file_path)?,
+            };
+            pb.inc(1);
+            Ok(Version {
+                name: version_name,
+                path: file_path.clone(),
+                files: HashMap::from([("main".to_string(), file_data)]),
+            })
+        })
+        .collect::<io::Result<_>>()?;
+
+    pb.finish();
+
+    Ok(files)
+}
+
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use pretty_assertions::assert_eq;
 
     use tempdir::TempDir;
@@ -125,7 +181,7 @@ mod tests {
 
         assert_eq!(versions.len(), 2);
 
-        let version_1 = &versions.iter().find(|v| v.name == "version_1").unwrap();
+        let version_1 = versions.iter().find(|v| v.name == "version_1").unwrap();
         assert_eq!(version_1.path, base.join("version_1").into());
         let files_1 = &version_1.files;
         assert_eq!(
@@ -137,8 +193,7 @@ mod tests {
             "file_b"
         );
 
-        let version_2 = &versions.iter().find(|v| v.name == "version_2").unwrap();
-        assert_eq!(version_2.name, "version_2");
+        let version_2 = versions.iter().find(|v| v.name == "version_2").unwrap();
         assert_eq!(version_2.path, base.join("version_2").into());
         let files_2 = &version_2.files;
         assert_eq!(
@@ -149,6 +204,35 @@ mod tests {
             files_2["file_b.txt"].text_content.as_ref().unwrap(),
             "file_b_new"
         );
+
+        tmp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_load_file_versions() {
+        let tmp_dir = TempDir::new("test_temp").unwrap();
+        let base = tmp_dir.path();
+
+        fs::create_dir_all(base.join("dir")).unwrap();
+        fs::write(base.join("file_a.txt"), "file_a").unwrap();
+        fs::write(base.join("dir/file_b.txt"), "file_b").unwrap();
+        fs::write(base.join("excluded.abc"), "excluded").unwrap();
+
+        let mp = MultiProgress::new();
+        let versions = load_file_versions(base, "txt", true, &mp).unwrap();
+
+        assert_eq!(versions.len(), 2);
+
+        let v1 = versions.iter().find(|v| v.name == "file_a.txt").unwrap();
+        assert_eq!(v1.path, base.join("file_a.txt").into());
+        assert_eq!(v1.files["main"].text_content.as_ref().unwrap(), "file_a");
+
+        let v2 = versions
+            .iter()
+            .find(|v| v.name == PathBuf::from("dir").join("file_b.txt").to_string_lossy())
+            .unwrap();
+        assert_eq!(v2.path, base.join("dir/file_b.txt").into());
+        assert_eq!(v2.files["main"].text_content.as_ref().unwrap(), "file_b");
 
         tmp_dir.close().unwrap();
     }
