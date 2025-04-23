@@ -8,6 +8,7 @@ chu-liu-edmonds = "0.1.0"
 clap = { version = "4.5.24", features = ["cargo"] }
 dircpy = "0.3.19"
 disjoint = "0.8.0"
+futures = "0.3.31"
 git2 = "0.20.0"
 indicatif = "0.17.11"
 ndarray = "0.15"
