@@ -3,10 +3,11 @@ use crate::{
     edmonds::find_msa,
     file_fetching::load_versions,
     types::{FileChange, TextChange, TextualVersionDiff, TreeNode, Version},
-    utils::PB_SPINNER_STYLE,
+    utils::PB_BAR_STYLE,
 };
 use indicatif::{MultiProgress, ProgressBar};
 use ndarray::Array2;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use similar::ChangeTag;
 use std::{
     collections::HashMap,
@@ -80,7 +81,7 @@ fn assemble_forest<T>(
     for (this, p) in parents.iter().enumerate() {
         if *p == parent {
             forest.push(TreeNode {
-                value: std::mem::replace(&mut data[this], None).unwrap(),
+                value: data[this].take().unwrap(),
                 children: assemble_forest(parents, Some(this), data),
             });
         }
@@ -102,36 +103,40 @@ pub fn infer_version_tree(dir: &Path, mp: &MultiProgress) -> io::Result<TreeNode
 
     let mut distances: Array2<f32> = Array2::zeros((n, n));
 
-    let mut handles = Vec::new();
     let versions_arc = Arc::new(versions);
 
-    let cmp_spinner = mp.add(ProgressBar::new_spinner());
-    cmp_spinner.enable_steady_tick(Duration::from_millis(100));
-    cmp_spinner.set_style(PB_SPINNER_STYLE.clone());
-    cmp_spinner.set_prefix("Comparing versions");
-
+    let mut to_compare = vec![];
     for j in 1..n {
         for i in 0..j {
-            let arc = Arc::clone(&versions_arc);
-
-            handles.push(thread::spawn(move || {
-                let version_a = &arc[i];
-                let version_b = &arc[j];
-
-                let text_diff = text_diff_versions(version_a, version_b);
-                (i, j, calculate_distances(&text_diff))
-            }));
+            to_compare.push((i, j));
         }
     }
 
-    for handle in handles {
-        let (i, j, res) = handle.join().unwrap();
-        let Pair(a_to_b, b_to_a) = res;
+    let cmp_pb = Arc::new(mp.add(ProgressBar::new(to_compare.len() as u64)));
+    cmp_pb.set_style(PB_BAR_STYLE.clone());
+    cmp_pb.set_prefix("Doing comparisons");
+    cmp_pb.enable_steady_tick(Duration::from_millis(100));
+
+    let results = to_compare
+        .par_iter()
+        .map(|&(i, j)| {
+            let version_a = &versions_arc[i];
+            let version_b = &versions_arc[j];
+
+            let text_diff = text_diff_versions(version_a, version_b);
+            cmp_pb.inc(1);
+            (i, j, calculate_distances(&text_diff))
+        })
+        .collect::<Vec<_>>();
+
+    for result in results {
+        let (i, j, edge_pair) = result;
+        let Pair(a_to_b, b_to_a) = edge_pair;
 
         distances[(i, j)] = a_to_b;
         distances[(j, i)] = b_to_a;
     }
-    cmp_spinner.finish();
+    cmp_pb.finish();
 
     let versions = Arc::try_unwrap(versions_arc).unwrap();
 

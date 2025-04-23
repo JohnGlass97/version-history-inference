@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::fs::{self, DirEntry};
 use std::io;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::types::{FileData, Version};
 use crate::utils::PB_BAR_STYLE;
@@ -66,23 +68,21 @@ pub fn load_versions(dir: &Path, mp: &MultiProgress) -> io::Result<Vec<Version>>
         let mut file_paths: Vec<Box<Path>> = Vec::new();
         walk_dir(&version_path, &mut file_paths);
 
-        let mut files: HashMap<String, FileData> = HashMap::new();
-
-        let version_pb = mp.add(ProgressBar::new(file_paths.len() as u64));
+        let version_pb = Arc::new(mp.add(ProgressBar::new(file_paths.len() as u64)));
         version_pb.set_style(PB_BAR_STYLE.clone());
         version_pb.set_prefix(format!("Version {}", i + 1));
 
-        for file_path in file_paths {
-            let file_rel_path = get_relative_path(&file_path, &version_path);
-            files.insert(
-                file_rel_path.to_string_lossy().to_string(),
-                FileData {
+        let files: HashMap<String, FileData> = file_paths
+            .par_iter()
+            .map(|file_path| {
+                let file_rel_path = get_relative_path(&file_path, &version_path);
+                let file_data = FileData {
                     text_content: read_file_to_str_opt(&file_path)?,
-                },
-            );
-
-            version_pb.inc(1);
-        }
+                };
+                version_pb.inc(1);
+                Ok((file_rel_path.to_string_lossy().to_string(), file_data))
+            })
+            .collect::<io::Result<_>>()?;
 
         let version_rel_path = get_relative_path(&version_path, &dir);
         let version_name = version_rel_path.to_string_lossy().to_string();

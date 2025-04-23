@@ -1900,6 +1900,7 @@ dependencies = [
  "ndarray",
  "octocrab",
  "pretty_assertions",
+ "rayon",
  "render_as_tree",
  "serde",
  "serde_json",
