@@ -140,7 +140,7 @@ fn compare_ancestor_sets(
 
     for (name, ground_set) in ground_sets {
         let inferred_set = inferred_sets.get(name).unwrap();
-        println!("{ground_set:?} {inferred_set:?}");
+        // println!("{ground_set:?} {inferred_set:?}");
         let intersection = ground_set.intersection(inferred_set).count() as f32 + 1.;
 
         let precision = intersection / (inferred_set.len() + 1) as f32;
@@ -172,6 +172,7 @@ fn main() {
     let fork_trees: HashMap<String, TreeNode<VersionRef>> =
         serde_json::from_str(&fork_trees_json).unwrap();
 
+    println!("                   Precision  Recall      F1");
     for (root_name, fork_tree) in fork_trees {
         let ground_fork_tree = TreeNode {
             value: "Empty".to_string(),
@@ -203,6 +204,6 @@ fn main() {
         remove_empty(&mut inferred_sets);
 
         let (precision, recall, f1) = compare_ancestor_sets(&ground_sets, &inferred_sets);
-        println!("{precision} {recall} {f1}");
+        println!("{root_name:20}    {precision:.2}    {recall:.2}    {f1:.2}");
     }
 }
