@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use octocrab::{models::Repository, params::repos::forks::Sort, Octocrab};
+use serde::{Deserialize, Serialize};
 
 use crate::types::TreeNode;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionRef {
     pub owner: String,
     pub repo: String,
@@ -185,4 +186,33 @@ pub async fn build_fork_tree(
     }
 
     Some(tree)
+}
+
+pub fn gen_version_name(version_ref: &VersionRef) -> String {
+    format!(
+        "{}-{}-{}-v{}",
+        version_ref.owner,
+        version_ref.repo,
+        if version_ref.is_head { "HEAD" } else { "OLD" },
+        version_ref.version_no,
+    )
+}
+
+pub fn gen_version_display_name(version_ref: &VersionRef) -> String {
+    format!(
+        "{}/{} - {}: v{}",
+        version_ref.owner,
+        version_ref.repo,
+        if version_ref.is_head { "HEAD" } else { "OLD" },
+        version_ref.version_no
+    )
+}
+
+pub fn split_full_name(full_name: &str) -> (&str, &str) {
+    let [owner, repo] = full_name
+        .split("/")
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("Repo full names must have exactly one '/'");
+    (owner, repo)
 }

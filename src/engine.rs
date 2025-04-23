@@ -1,3 +1,13 @@
+use crate::{
+    diffing::text_diff_versions,
+    edmonds::find_msa,
+    file_fetching::load_versions,
+    types::{FileChange, TextChange, TextualVersionDiff, TreeNode, Version},
+    utils::PB_SPINNER_STYLE,
+};
+use indicatif::{MultiProgress, ProgressBar};
+use ndarray::Array2;
+use similar::ChangeTag;
 use std::{
     collections::HashMap,
     io,
@@ -5,16 +15,7 @@ use std::{
     path::Path,
     sync::Arc,
     thread::{self},
-};
-
-use ndarray::{arr2, Array2};
-use similar::ChangeTag;
-
-use crate::{
-    diffing::text_diff_versions,
-    edmonds::find_msa,
-    file_fetching::load_versions,
-    types::{FileChange, TextChange, TextualVersionDiff, TreeNode, Version},
+    time::Duration,
 };
 
 // Penalties
@@ -87,8 +88,8 @@ fn assemble_forest<T>(
     forest
 }
 
-pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
-    let mut versions = load_versions(dir)?;
+pub fn infer_version_tree(dir: &Path, mp: &MultiProgress) -> io::Result<TreeNode<Version>> {
+    let mut versions = load_versions(dir, mp)?;
 
     let null_version = Version {
         name: "Empty".to_string(),
@@ -103,6 +104,11 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
 
     let mut handles = Vec::new();
     let versions_arc = Arc::new(versions);
+
+    let cmp_spinner = mp.add(ProgressBar::new_spinner());
+    cmp_spinner.enable_steady_tick(Duration::from_millis(100));
+    cmp_spinner.set_style(PB_SPINNER_STYLE.clone());
+    cmp_spinner.set_prefix("Comparing versions");
 
     for j in 1..n {
         for i in 0..j {
@@ -125,6 +131,7 @@ pub fn infer_version_tree(dir: &Path) -> io::Result<TreeNode<Version>> {
         distances[(i, j)] = a_to_b;
         distances[(j, i)] = b_to_a;
     }
+    cmp_spinner.finish();
 
     let versions = Arc::try_unwrap(versions_arc).unwrap();
 
@@ -172,7 +179,7 @@ mod tests {
         append_to_file(base.join("version_3/file_a.txt"), "uvw\n").unwrap();
         append_to_file(base.join("version_3/file_b.txt"), "xyz\n").unwrap();
 
-        let version_tree = infer_version_tree(base).unwrap();
+        let version_tree = infer_version_tree(base, &MultiProgress::new()).unwrap();
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
         let expected = TreeNode {
@@ -233,7 +240,7 @@ mod tests {
         )
         .unwrap();
 
-        let version_tree = infer_version_tree(base).unwrap();
+        let version_tree = infer_version_tree(base, &MultiProgress::new()).unwrap();
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
         let expected = TreeNode {

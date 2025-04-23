@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt, path::Path};
 
+use serde::{Deserialize, Serialize};
 use similar::ChangeTag;
 
 #[derive(Debug)]
@@ -35,10 +36,24 @@ pub struct Version {
     pub files: HashMap<String, FileData>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TreeNode<T> {
     pub value: T,
     pub children: Vec<TreeNode<T>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffInfo {
+    pub name: String,
+    pub added: usize,
+    pub deleted: usize,
+    pub modified: usize,
+}
+
+impl DiffInfo {
+    pub fn no_changes(&self) -> bool {
+        self.added == 0 && self.deleted == 0 && self.modified == 0
+    }
 }
 
 impl<T: Eq> PartialEq for TreeNode<T> {

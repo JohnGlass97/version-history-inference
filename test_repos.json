@@ -1,0 +1,17 @@
+[
+  "ocornut/imgui",
+  "rails/rails",
+  "facebook/react",
+  "redis/redis",
+  "jestjs/jest",
+  "zenorocha/clipboard.js",
+  "chartjs/Chart.js",
+  "FormidableLabs/spectacle",
+  "palantir/blueprint",
+  "tldr-pages/tldr",
+  "typicode/husky",
+  "raysan5/raylib",
+  "facebook/jest",
+  "prettier/prettier",
+  "chancejs/chancejs"
+]
