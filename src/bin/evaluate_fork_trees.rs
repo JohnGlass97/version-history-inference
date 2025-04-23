@@ -159,18 +159,24 @@ fn compare_ancestor_sets(
     )
 }
 
+fn remove_empty(ancestor_sets: &mut HashMap<String, HashSet<String>>) {
+    for set in ancestor_sets.values_mut() {
+        set.remove("Empty");
+    }
+
+    ancestor_sets.remove("Empty");
+}
+
 fn main() {
     let fork_trees_json = fs::read_to_string("./test_repos/fork_trees.json").unwrap();
     let fork_trees: HashMap<String, TreeNode<VersionRef>> =
         serde_json::from_str(&fork_trees_json).unwrap();
 
     for (root_name, fork_tree) in fork_trees {
-        // let (root_name, fork_tree) = fork_trees.get_key_value("imgui-forks").unwrap();
-        let ground_fork_tree = fork_tree.map(&gen_version_name);
-
-        println!("{root_name}");
-        let fork_tree_json =
-            fs::read_to_string(format!("./test_repos/{root_name}/version_tree.json")).unwrap();
+        let ground_fork_tree = TreeNode {
+            value: "Empty".to_string(),
+            children: vec![fork_tree.map(&gen_version_name)],
+        };
         let inferred_fork_tree: TreeNode<DiffInfo> = serde_json::from_str(&fork_tree_json).unwrap();
 
         // println!("{}", render(&ground_fork_tree).join("\n"));
@@ -183,12 +189,11 @@ fn main() {
         // println!("{}", render(&new_ground_tree).join("\n"));
         // println!("{}", render(&new_inferred_tree).join("\n"));
 
-        let ground_sets = make_ancestor_sets(&new_ground_tree);
+        let mut ground_sets = make_ancestor_sets(&new_ground_tree);
         let mut inferred_sets = make_ancestor_sets(&new_inferred_tree);
 
-        for set in inferred_sets.values_mut() {
-            set.remove("Empty");
-        }
+        remove_empty(&mut ground_sets);
+        remove_empty(&mut inferred_sets);
 
         let (precision, recall, f1) = compare_ancestor_sets(&ground_sets, &inferred_sets);
         println!("{precision} {recall} {f1}");
