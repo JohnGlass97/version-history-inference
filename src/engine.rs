@@ -89,9 +89,7 @@ fn assemble_forest<T>(
     forest
 }
 
-pub fn infer_version_tree(dir: &Path, mp: &MultiProgress) -> io::Result<TreeNode<Version>> {
-    let mut versions = load_versions(dir, mp)?;
-
+pub fn infer_version_tree(mut versions: Vec<Version>, mp: &MultiProgress) -> TreeNode<Version> {
     let null_version = Version {
         name: "Empty".to_string(),
         path: Path::new(".").into(), // TODO: Is this safe?
@@ -148,7 +146,7 @@ pub fn infer_version_tree(dir: &Path, mp: &MultiProgress) -> io::Result<TreeNode
     assert_eq!(forest.len(), 1, "MSA is not tree");
     let tree = forest.remove(0);
 
-    Ok(tree)
+    tree
 }
 
 #[cfg(test)]
@@ -184,7 +182,9 @@ mod tests {
         append_to_file(base.join("version_3/file_a.txt"), "uvw\n").unwrap();
         append_to_file(base.join("version_3/file_b.txt"), "xyz\n").unwrap();
 
-        let version_tree = infer_version_tree(base, &MultiProgress::new()).unwrap();
+        let mp = &MultiProgress::new();
+        let versions = load_versions(base, &mp).unwrap();
+        let version_tree = infer_version_tree(versions, &mp);
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
         let expected = TreeNode {
@@ -245,7 +245,9 @@ mod tests {
         )
         .unwrap();
 
-        let version_tree = infer_version_tree(base, &MultiProgress::new()).unwrap();
+        let mp = &MultiProgress::new();
+        let versions = load_versions(base, &mp).unwrap();
+        let version_tree = infer_version_tree(versions, &mp);
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
         let expected = TreeNode {

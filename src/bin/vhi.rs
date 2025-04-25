@@ -6,6 +6,7 @@ use render_as_tree::render;
 use std::io::Write;
 use std::time::Instant;
 use std::{fs::File, path::PathBuf};
+use version_history_inference::file_fetching::load_versions;
 use version_history_inference::{
     engine::infer_version_tree,
     rendering::{produce_diff_tree, produce_label_tree},
@@ -36,7 +37,8 @@ fn main() {
     let mp = MultiProgress::new();
     let started = Instant::now();
 
-    let version_tree = infer_version_tree(&dir, &mp).unwrap();
+    let versions = load_versions(&dir, &mp).unwrap();
+    let version_tree = infer_version_tree(versions, &mp);
 
     let save_spinner = mp.add(ProgressBar::new_spinner());
     save_spinner.set_style(PB_SPINNER_STYLE.clone());
