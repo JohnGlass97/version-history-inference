@@ -32,7 +32,7 @@ fn parse_args() -> Config {
                     .value_parser(value_parser!(PathBuf)),
                 )
                 .arg(
-                    arg!(-f --"files-as-versions" <extenion> "Treat individual files as versions instead, with the specified extension")
+                    arg!(-f --"files-as-versions" <extension> "Treat individual files as versions instead, with the specified extension")
                     .id("ext")
                     .value_parser(value_parser!(String))
                 )
