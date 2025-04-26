@@ -17,6 +17,7 @@ use version_history_inference::{
 
 #[derive(Debug)]
 enum Config {
+    /// directory, file extension, recursive
     Infer(PathBuf, Option<String>, bool),
 }
 
