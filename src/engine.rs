@@ -1,6 +1,6 @@
 use crate::{
     diffing::text_diff_versions,
-    edmonds::find_msa,
+    edmonds::{assemble_forest, find_msa},
     file_fetching::load_versions,
     types::{FileChange, TextChange, TextualVersionDiff, TreeNode, Version},
     utils::PB_BAR_STYLE,
@@ -68,25 +68,6 @@ fn calculate_distances(text_diff: &TextualVersionDiff) -> Pair {
     }
 
     forward_backward
-}
-
-/// Combine tree in vector of parents form and data vector
-/// to get TreeNode vector (a forest)
-fn assemble_forest<T>(
-    parents: &Vec<Option<usize>>,
-    parent: Option<usize>,
-    data: &mut Vec<Option<T>>,
-) -> Vec<TreeNode<T>> {
-    let mut forest: Vec<TreeNode<T>> = Vec::new();
-    for (this, p) in parents.iter().enumerate() {
-        if *p == parent {
-            forest.push(TreeNode {
-                value: data[this].take().unwrap(),
-                children: assemble_forest(parents, Some(this), data),
-            });
-        }
-    }
-    forest
 }
 
 pub fn infer_version_tree(mut versions: Vec<Version>, mp: &MultiProgress) -> TreeNode<Version> {
