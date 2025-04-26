@@ -81,7 +81,7 @@ pub fn load_versions(dir: &Path, mp: &MultiProgress) -> io::Result<Vec<Version>>
 
     for (i, version_path) in version_paths.into_iter().enumerate() {
         let mut file_paths: Vec<Box<Path>> = Vec::new();
-        walk_dir(&version_path, &mut file_paths, None, true);
+        walk_dir(&version_path, &mut file_paths, None, true)?;
 
         let version_pb = Arc::new(mp.add(ProgressBar::new(file_paths.len() as u64)));
         version_pb.set_style(PB_BAR_STYLE.clone());
