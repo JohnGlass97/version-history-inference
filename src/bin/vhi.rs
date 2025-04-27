@@ -23,6 +23,7 @@ enum Config {
 
 fn parse_args() -> Config {
     let matches = command!()
+        .subcommand_required(true)
         .subcommand(
             Command::new("infer")
                 .about("Infer a version tree for the different versions represented by folders in the provided directory")
