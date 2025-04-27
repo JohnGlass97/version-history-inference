@@ -1,19 +1,29 @@
 #![allow(unused)]
 
-use clap::{arg, command, value_parser, Command};
+use clap::{arg, command, value_parser, ArgAction, Command};
 use indicatif::{HumanDuration, MultiProgress, ProgressBar};
 use render_as_tree::render;
 use std::io::Write;
+use std::path::Path;
+use std::process::exit;
 use std::time::Instant;
 use std::{fs::File, path::PathBuf};
+use version_history_inference::file_fetching::{load_file_versions, load_versions};
 use version_history_inference::{
     engine::infer_version_tree,
     rendering::{produce_diff_tree, produce_label_tree},
     utils::PB_SPINNER_STYLE,
 };
 
-fn parse_args() -> PathBuf {
+#[derive(Debug)]
+enum Config {
+    /// directory, file extension, recursive
+    Infer(PathBuf, Option<String>, bool),
+}
+
+fn parse_args() -> Config {
     let matches = command!()
+        .subcommand_required(true)
         .subcommand(
             Command::new("infer")
                 .about("Infer a version tree for the different versions represented by folders in the provided directory")
@@ -22,21 +32,41 @@ fn parse_args() -> PathBuf {
                     .id("dir")
                     .value_parser(value_parser!(PathBuf)),
                 )
+                .arg(
+                    arg!(-f --"files-as-versions" <extension> "Treat individual files as versions instead, with the specified extension")
+                    .id("ext")
+                    .value_parser(value_parser!(String))
+                )
+                .arg(
+                    arg!(-r --recursive "Search all subfolders (only applies to files-as-versions mode)").action(ArgAction::SetTrue)
+                )
         )
         .get_matches();
 
     let submatches = matches.subcommand_matches("infer").unwrap();
-    submatches.get_one::<PathBuf>("dir").unwrap().to_path_buf()
+
+    let dir = submatches.get_one::<PathBuf>("dir").unwrap().to_path_buf();
+    let ext = submatches.get_one::<String>("ext").cloned();
+    let recursive = submatches.get_flag("recursive");
+
+    Config::Infer(dir, ext, recursive)
 }
 
-fn main() {
-    let dir = parse_args();
-
+fn infer(dir: &Path, extension: Option<String>, recursive: bool) {
     // Progress tracking
     let mp = MultiProgress::new();
     let started = Instant::now();
 
-    let version_tree = infer_version_tree(&dir, &mp).unwrap();
+    let versions = match extension {
+        Some(ext) => load_file_versions(dir, &ext, recursive, &mp),
+        None => load_versions(dir, &mp),
+    }
+    .unwrap_or_else(|e| {
+        eprintln!("{}", e);
+        exit(1);
+    });
+
+    let version_tree = infer_version_tree(versions, &mp);
 
     let save_spinner = mp.add(ProgressBar::new_spinner());
     save_spinner.set_style(PB_SPINNER_STYLE.clone());
@@ -53,4 +83,9 @@ fn main() {
 
     let label_tree = produce_label_tree(&diff_tree);
     print!("{}", render(&label_tree).join("\n"));
+}
+
+fn main() {
+    let Config::Infer(dir, ext, recursive) = parse_args();
+    infer(&dir, ext, recursive);
 }

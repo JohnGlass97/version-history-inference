@@ -1,13 +1,15 @@
 use chu_liu_edmonds::chu_liu_edmonds;
 use ndarray::{arr2, ArrayView2};
 
+use crate::types::TreeNode;
+
 /// Find a minimum spanning arborescence
 pub fn find_msa(scores: ArrayView2<f32>, root_vertex: usize) -> Vec<Option<usize>> {
     let new_scores = &scores * -1.0;
     return chu_liu_edmonds(new_scores.view(), root_vertex);
 }
 
-pub fn msa_to_string(result: &Vec<Option<usize>>) -> String {
+fn msa_to_string(result: &Vec<Option<usize>>) -> String {
     result
         .iter()
         .map(|opt| match opt {
@@ -16,6 +18,25 @@ pub fn msa_to_string(result: &Vec<Option<usize>>) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// Combine tree in vector of parents form and data vector
+/// to get TreeNode vector (a forest)
+pub fn assemble_forest<T>(
+    parents: &Vec<Option<usize>>,
+    parent: Option<usize>,
+    data: &mut Vec<Option<T>>,
+) -> Vec<TreeNode<T>> {
+    let mut forest: Vec<TreeNode<T>> = Vec::new();
+    for (this, p) in parents.iter().enumerate() {
+        if *p == parent {
+            forest.push(TreeNode {
+                value: data[this].take().unwrap(),
+                children: assemble_forest(parents, Some(this), data),
+            });
+        }
+    }
+    forest
 }
 
 #[cfg(test)]
