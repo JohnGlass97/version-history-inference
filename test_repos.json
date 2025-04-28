@@ -3,7 +3,6 @@
   "rails/rails",
   "facebook/react",
   "redis/redis",
-  "jestjs/jest",
   "zenorocha/clipboard.js",
   "chartjs/Chart.js",
   "FormidableLabs/spectacle",
