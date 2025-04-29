@@ -134,9 +134,9 @@ fn compare_ancestor_sets(
     ground_sets: &HashMap<String, HashSet<String>>,
     inferred_sets: &HashMap<String, HashSet<String>>,
 ) -> (f32, f32, f32) {
-    let mut precisions = vec![];
-    let mut recalls = vec![];
-    let mut f1s = vec![];
+    let mut total_precisions = 0.;
+    let mut total_recalls = 0.;
+    let mut total_f1s = 0.;
 
     for (name, ground_set) in ground_sets {
         let inferred_set = inferred_sets.get(name).unwrap();
@@ -147,16 +147,13 @@ fn compare_ancestor_sets(
         let recall = intersection / (ground_set.len() + 1) as f32;
         let f1 = 2. * precision * recall / (precision + recall);
 
-        precisions.push(precision);
-        recalls.push(recall);
-        f1s.push(f1);
+        total_precisions += precision;
+        total_recalls += recall;
+        total_f1s += f1;
     }
 
-    (
-        precisions.iter().sum::<f32>() / precisions.len() as f32,
-        recalls.iter().sum::<f32>() / recalls.len() as f32,
-        f1s.iter().sum::<f32>() / f1s.len() as f32,
-    )
+    let n = ground_sets.len() as f32;
+    (total_precisions / n, total_recalls / n, total_f1s / n)
 }
 
 fn remove_empty(ancestor_sets: &mut HashMap<String, HashSet<String>>) {
@@ -172,7 +169,22 @@ fn main() {
     let fork_trees: HashMap<String, TreeNode<VersionRef>> =
         serde_json::from_str(&fork_trees_json).unwrap();
 
-    println!("                   Precision  Recall      F1");
+    let mut rows = vec![];
+
+    let mut total_precisions = 0.;
+    let mut total_recalls = 0.;
+    let mut total_f1s = 0.;
+    let mut total_versions = 0.;
+    let mut n = 0.;
+
+    rows.push((
+        "Repo".to_owned(),
+        "Precision".to_owned(),
+        "Recall".to_owned(),
+        "F1".to_owned(),
+        "No. Versions".to_owned(),
+    ));
+
     for (root_name, fork_tree) in fork_trees {
         let ground_fork_tree = TreeNode {
             value: "Empty".to_string(),
@@ -203,7 +215,45 @@ fn main() {
         remove_empty(&mut ground_sets);
         remove_empty(&mut inferred_sets);
 
+        let n_versions = ground_sets.len();
+
         let (precision, recall, f1) = compare_ancestor_sets(&ground_sets, &inferred_sets);
-        println!("{root_name:20}    {precision:.2}    {recall:.2}    {f1:.2}");
+        // println!("{root_name:20}    {precision:.2}    {recall:.2}    {f1:.2}");
+        rows.push((
+            root_name,
+            format!("{precision:.2}"),
+            format!("{recall:.2}"),
+            format!("{f1:.2}"),
+            n_versions.to_string(),
+        ));
+
+        total_precisions += precision;
+        total_recalls += recall;
+        total_f1s += f1;
+        total_versions += n_versions as f32;
+        n += 1.;
+    }
+
+    let avg_precision = total_precisions / n;
+    let avg_recall = total_recalls / n;
+    let avg_f1 = total_f1s / n;
+    let avg_versions = total_versions / n;
+
+    rows.push((
+        "Average".to_owned(),
+        format!("{avg_precision:.2}"),
+        format!("{avg_recall:.2}"),
+        format!("{avg_f1:.2}"),
+        format!("{avg_versions:.0}"),
+    ));
+
+    for (i, (a, b, c, d, e)) in rows.into_iter().enumerate() {
+        if i == 0 {
+            println!("\\hline");
+            println!("{a:20} & {b:10} & {c:10} & {d:10} & {e:10} \\\\");
+        } else {
+            println!("{a:20} & {b:>10} & {c:>10} & {d:>10} & {e:>10} \\\\");
+        }
+        println!("\\hline");
     }
 }
