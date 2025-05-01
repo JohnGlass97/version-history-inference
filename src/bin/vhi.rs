@@ -12,6 +12,7 @@ use version_history_inference::file_fetching::{load_file_versions, load_versions
 use version_history_inference::{
     engine::infer_version_tree,
     rendering::{produce_diff_tree, produce_label_tree},
+    test_utils::InferencePerformanceTracker,
     utils::PB_SPINNER_STYLE,
 };
 
@@ -55,18 +56,20 @@ fn parse_args() -> Config {
 fn infer(dir: &Path, extension: Option<String>, recursive: bool) {
     // Progress tracking
     let mp = MultiProgress::new();
-    let started = Instant::now();
+    let mut perf_tracker = InferencePerformanceTracker::new(dir);
 
     let versions = match extension {
         Some(ext) => load_file_versions(dir, &ext, recursive, &mp),
         None => load_versions(dir, &mp),
     }
     .unwrap_or_else(|e| {
-        eprintln!("{}", e);
+        eprintln!("Failed to load versions: {}", e);
         exit(1);
     });
+    perf_tracker.done_loading(&versions);
 
     let version_tree = infer_version_tree(versions, &mp);
+    perf_tracker.done_inferring();
 
     let save_spinner = mp.add(ProgressBar::new_spinner());
     save_spinner.set_style(PB_SPINNER_STYLE.clone());
@@ -77,12 +80,19 @@ fn infer(dir: &Path, extension: Option<String>, recursive: bool) {
     let diff_tree = produce_diff_tree(&version_tree);
     let diff_tree_json = serde_json::to_string(&diff_tree).unwrap();
     file.write_all(diff_tree_json.as_bytes()).unwrap();
+    perf_tracker.done_saving();
 
     save_spinner.finish();
-    println!("Done in {}\n", HumanDuration(started.elapsed()));
+    println!("Done in {}\n", HumanDuration(perf_tracker.elapsed()));
 
     let label_tree = produce_label_tree(&diff_tree);
     print!("{}", render(&label_tree).join("\n"));
+
+    // Save performance trace
+    perf_tracker.finished().unwrap_or_else(|e| {
+        eprintln!("\nFailed to save performance trace: {}", e);
+        exit(1);
+    });
 }
 
 fn main() {
