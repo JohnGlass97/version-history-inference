@@ -12,9 +12,8 @@ use version_history_inference::{
     engine::infer_version_tree,
     file_fetching::{load_file_versions, load_versions},
     rendering::{produce_diff_tree, produce_label_tree},
-    test_utils::InferencePerformanceTracker,
     types::{DiffInfo, TreeNode},
-    utils::PB_SPINNER_STYLE,
+    utils::{InferencePerformanceTracker, PB_SPINNER_STYLE},
 };
 
 #[derive(Debug)]
