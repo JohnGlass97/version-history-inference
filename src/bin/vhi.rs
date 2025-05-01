@@ -9,8 +9,10 @@ use std::{
     process::exit,
 };
 use version_history_inference::{
-    engine::infer_version_tree,
-    file_fetching::{load_file_versions, load_versions},
+    inference::{
+        engine::infer_version_tree,
+        file_fetching::{load_file_versions, load_versions},
+    },
     rendering::{produce_diff_tree, produce_label_tree},
     types::{DiffInfo, TreeNode},
     utils::{InferencePerformanceTracker, PB_SPINNER_STYLE},

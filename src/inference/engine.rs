@@ -1,7 +1,9 @@
 use crate::{
-    diffing::text_diff_versions,
-    edmonds::{assemble_forest, find_msa},
-    file_fetching::load_versions,
+    inference::{
+        diffing::text_diff_versions,
+        edmonds::{assemble_forest, find_msa},
+        file_fetching::load_versions,
+    },
     types::{FileChange, TextChange, TextualVersionDiff, TreeNode, Version},
     utils::PB_BAR_STYLE,
 };

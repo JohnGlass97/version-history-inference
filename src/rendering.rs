@@ -1,5 +1,5 @@
 use crate::{
-    diffing::text_diff_versions,
+    inference::diffing::text_diff_versions,
     types::{DiffInfo, TreeNode, Version},
 };
 
