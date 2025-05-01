@@ -3,23 +3,24 @@
 use clap::{arg, command, value_parser, ArgAction, Command};
 use indicatif::{HumanDuration, MultiProgress, ProgressBar};
 use render_as_tree::render;
-use std::io::Write;
-use std::path::Path;
-use std::process::exit;
-use std::time::Instant;
-use std::{fs::File, path::PathBuf};
-use version_history_inference::file_fetching::{load_file_versions, load_versions};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+    process::exit,
+};
 use version_history_inference::{
     engine::infer_version_tree,
+    file_fetching::{load_file_versions, load_versions},
     rendering::{produce_diff_tree, produce_label_tree},
     test_utils::InferencePerformanceTracker,
+    types::{DiffInfo, TreeNode},
     utils::PB_SPINNER_STYLE,
 };
 
 #[derive(Debug)]
 enum Config {
-    /// directory, file extension, recursive, multithreading
-    Infer(PathBuf, Option<String>, bool, bool),
+    /// directory, file extension, recursive, multithreading, trace_perf
+    Infer(PathBuf, Option<String>, bool, bool, bool),
 }
 
 fn parse_args() -> Config {
@@ -44,6 +45,9 @@ fn parse_args() -> Config {
                 .arg(
                     arg!(--"no-multithreading" "Disable multithreading").action(ArgAction::SetTrue)
                 )
+                .arg(
+                    arg!(-p --"trace-performance" "Produce a JSON file with runtime duration information").action(ArgAction::SetTrue)
+                )
         )
         .get_matches();
 
@@ -53,53 +57,71 @@ fn parse_args() -> Config {
     let ext = submatches.get_one::<String>("ext").cloned();
     let recursive = submatches.get_flag("recursive");
     let multithreading = !submatches.get_flag("no-multithreading");
+    let trace_perf = submatches.get_flag("trace-performance");
 
-    Config::Infer(dir, ext, recursive, multithreading)
+    Config::Infer(dir, ext, recursive, multithreading, trace_perf)
 }
 
-fn infer(dir: &Path, extension: Option<String>, recursive: bool, multithreading: bool) {
+fn save_version_tree(dir: &Path, diff_tree: &TreeNode<DiffInfo>) -> Result<(), String> {
+    let file = File::create(dir.join("version_tree.json")).map_err(|e| format!("{e}"))?;
+    serde_json::to_writer(file, &diff_tree).map_err(|e| format!("{e}"))
+}
+
+fn infer(
+    dir: &Path,
+    extension: Option<String>,
+    recursive: bool,
+    multithreading: bool,
+    trace_perf: bool,
+) {
     // Progress tracking
     let mp = MultiProgress::new();
     let mut perf_tracker = InferencePerformanceTracker::new(dir);
 
+    // Load versions
     let versions = match extension {
         Some(ext) => load_file_versions(dir, &ext, recursive, multithreading, &mp),
         None => load_versions(dir, multithreading, &mp),
     }
     .unwrap_or_else(|e| {
-        eprintln!("Failed to load versions: {}", e);
+        eprintln!("Failed to load versions: {e}");
         exit(1);
     });
     perf_tracker.done_loading(&versions);
 
+    // Infer version tree
     let version_tree = infer_version_tree(versions, &mp);
     perf_tracker.done_inferring();
 
+    // Save tree
     let save_spinner = mp.add(ProgressBar::new_spinner());
     save_spinner.set_style(PB_SPINNER_STYLE.clone());
     save_spinner.set_prefix("Saving tree");
 
-    // Save tree to JSON file
-    let mut file = File::create(&dir.join("version_tree.json")).unwrap();
     let diff_tree = produce_diff_tree(&version_tree);
-    let diff_tree_json = serde_json::to_string(&diff_tree).unwrap();
-    file.write_all(diff_tree_json.as_bytes()).unwrap();
+    save_version_tree(&dir, &diff_tree).unwrap_or_else(|e| {
+        eprintln!("\nFailed to save version tree: {e}");
+        exit(1);
+    });
     perf_tracker.done_saving();
 
     save_spinner.finish();
     println!("Done in {}\n", HumanDuration(perf_tracker.elapsed()));
 
+    // Output tree
     let label_tree = produce_label_tree(&diff_tree);
     print!("{}", render(&label_tree).join("\n"));
 
     // Save performance trace
-    perf_tracker.finished().unwrap_or_else(|e| {
-        eprintln!("\nFailed to save performance trace: {}", e);
-        exit(1);
-    });
+    if (trace_perf) {
+        perf_tracker.finished().unwrap_or_else(|e| {
+            eprintln!("\nFailed to save performance trace: {e}");
+            exit(1);
+        });
+    }
 }
 
 fn main() {
-    let Config::Infer(dir, ext, recursive, multithreading) = parse_args();
-    infer(&dir, ext, recursive, multithreading);
+    let Config::Infer(dir, ext, recursive, multithreading, trace_perf) = parse_args();
+    infer(&dir, ext, recursive, multithreading, trace_perf);
 }
