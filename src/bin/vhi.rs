@@ -18,8 +18,8 @@ use version_history_inference::{
 
 #[derive(Debug)]
 enum Config {
-    /// directory, file extension, recursive
-    Infer(PathBuf, Option<String>, bool),
+    /// directory, file extension, recursive, multithreading
+    Infer(PathBuf, Option<String>, bool, bool),
 }
 
 fn parse_args() -> Config {
@@ -41,6 +41,9 @@ fn parse_args() -> Config {
                 .arg(
                     arg!(-r --recursive "Search all subfolders (only applies to files-as-versions mode)").action(ArgAction::SetTrue)
                 )
+                .arg(
+                    arg!(--"no-multithreading" "Disable multithreading").action(ArgAction::SetTrue)
+                )
         )
         .get_matches();
 
@@ -49,18 +52,19 @@ fn parse_args() -> Config {
     let dir = submatches.get_one::<PathBuf>("dir").unwrap().to_path_buf();
     let ext = submatches.get_one::<String>("ext").cloned();
     let recursive = submatches.get_flag("recursive");
+    let multithreading = !submatches.get_flag("no-multithreading");
 
-    Config::Infer(dir, ext, recursive)
+    Config::Infer(dir, ext, recursive, multithreading)
 }
 
-fn infer(dir: &Path, extension: Option<String>, recursive: bool) {
+fn infer(dir: &Path, extension: Option<String>, recursive: bool, multithreading: bool) {
     // Progress tracking
     let mp = MultiProgress::new();
     let mut perf_tracker = InferencePerformanceTracker::new(dir);
 
     let versions = match extension {
-        Some(ext) => load_file_versions(dir, &ext, recursive, &mp),
-        None => load_versions(dir, &mp),
+        Some(ext) => load_file_versions(dir, &ext, recursive, multithreading, &mp),
+        None => load_versions(dir, multithreading, &mp),
     }
     .unwrap_or_else(|e| {
         eprintln!("Failed to load versions: {}", e);
@@ -96,6 +100,6 @@ fn infer(dir: &Path, extension: Option<String>, recursive: bool) {
 }
 
 fn main() {
-    let Config::Infer(dir, ext, recursive) = parse_args();
-    infer(&dir, ext, recursive);
+    let Config::Infer(dir, ext, recursive, multithreading) = parse_args();
+    infer(&dir, ext, recursive, multithreading);
 }

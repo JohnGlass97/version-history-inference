@@ -70,7 +70,11 @@ fn get_relative_path<'a>(path: &'a Path, base: &'a Path) -> &'a Path {
         .expect("Failed to strip path prefix")
 }
 
-pub fn load_versions(dir: &Path, mp: &MultiProgress) -> io::Result<Vec<Version>> {
+pub fn load_versions(
+    dir: &Path,
+    multithreading: bool,
+    mp: &MultiProgress,
+) -> io::Result<Vec<Version>> {
     let version_paths = dirs_in_dir(dir)?;
     let mut versions: Vec<Version> = Vec::new();
 
@@ -87,17 +91,23 @@ pub fn load_versions(dir: &Path, mp: &MultiProgress) -> io::Result<Vec<Version>>
         version_pb.set_style(PB_BAR_STYLE.clone());
         version_pb.set_prefix(format!("Version {}", i + 1));
 
-        let files: HashMap<String, FileData> = file_paths
-            .par_iter()
-            .map(|file_path| {
-                let file_rel_path = get_relative_path(&file_path, &version_path);
-                let file_data = FileData {
-                    text_content: read_file_to_str_opt(&file_path)?,
-                };
-                version_pb.inc(1);
-                Ok((file_rel_path.to_string_lossy().to_string(), file_data))
-            })
-            .collect::<io::Result<_>>()?;
+        let map_op = |file_path: &Box<Path>| {
+            let file_rel_path = get_relative_path(&file_path, &version_path);
+            let file_data = FileData {
+                text_content: read_file_to_str_opt(&file_path)?,
+            };
+            version_pb.inc(1);
+            Ok((file_rel_path.to_string_lossy().to_string(), file_data))
+        };
+
+        let files: HashMap<String, FileData> = if multithreading {
+            file_paths
+                .par_iter()
+                .map(map_op)
+                .collect::<io::Result<_>>()?
+        } else {
+            file_paths.iter().map(map_op).collect::<io::Result<_>>()?
+        };
 
         let version_rel_path = get_relative_path(&version_path, &dir);
         let version_name = version_rel_path.to_string_lossy().to_string();
@@ -120,6 +130,7 @@ pub fn load_file_versions(
     dir: &Path,
     extension: &str,
     recursive: bool,
+    multithreading: bool,
     mp: &MultiProgress,
 ) -> io::Result<Vec<Version>> {
     let norm_ext = extension.strip_prefix(".").unwrap_or(extension);
@@ -177,7 +188,7 @@ mod tests {
         fs::write(base.join("version_2/file_a.txt"), "file_a_new").unwrap();
         fs::write(base.join("version_2/file_b.txt"), "file_b_new").unwrap();
 
-        let versions = load_versions(base, &MultiProgress::new()).unwrap();
+        let versions = load_versions(base, true, &MultiProgress::new()).unwrap();
 
         assert_eq!(versions.len(), 2);
 
@@ -219,7 +230,7 @@ mod tests {
         fs::write(base.join("excluded.abc"), "excluded").unwrap();
 
         let mp = MultiProgress::new();
-        let versions = load_file_versions(base, "txt", true, &mp).unwrap();
+        let versions = load_file_versions(base, "txt", true, true, &mp).unwrap();
 
         assert_eq!(versions.len(), 2);
 

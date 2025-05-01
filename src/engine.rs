@@ -164,7 +164,7 @@ mod tests {
         append_to_file(base.join("version_3/file_b.txt"), "xyz\n").unwrap();
 
         let mp = &MultiProgress::new();
-        let versions = load_versions(base, &mp).unwrap();
+        let versions = load_versions(base, true, &mp).unwrap();
         let version_tree = infer_version_tree(versions, &mp);
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
@@ -227,7 +227,7 @@ mod tests {
         .unwrap();
 
         let mp = &MultiProgress::new();
-        let versions = load_versions(base, &mp).unwrap();
+        let versions = load_versions(base, true, &mp).unwrap();
         let version_tree = infer_version_tree(versions, &mp);
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
