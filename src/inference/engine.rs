@@ -41,7 +41,7 @@ fn file_heuristic(file_change: &FileChange) -> Pair {
     )
 }
 
-fn calculate_divergences(text_diff: &TextualVersionDiff) -> Pair {
+pub fn calculate_divergences(text_diff: &TextualVersionDiff) -> Pair {
     let mut forward_backward = Pair(0., 0.);
 
     for file_change in &text_diff.added_files {

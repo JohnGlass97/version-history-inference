@@ -48,6 +48,7 @@ pub struct DiffInfo {
     pub added: usize,
     pub deleted: usize,
     pub modified: usize,
+    pub divergence: f32,
 }
 
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 use crate::{
-    inference::diffing::text_diff_versions,
+    inference::{diffing::text_diff_versions, engine::calculate_divergences},
     types::{DiffInfo, TreeNode, Version},
 };
 
@@ -13,6 +13,7 @@ pub fn produce_diff_tree(node: &TreeNode<Version>) -> TreeNode<DiffInfo> {
                     added: diff.added_files.len(),
                     deleted: diff.deleted_files.len(),
                     modified: diff.modified_files.len(),
+                    divergence: calculate_divergences(&diff).0,
                 }
             }
             None => DiffInfo {
@@ -20,6 +21,7 @@ pub fn produce_diff_tree(node: &TreeNode<Version>) -> TreeNode<DiffInfo> {
                 added: 0,
                 deleted: 0,
                 modified: 0,
+                divergence: 0.,
             },
         }
     }
