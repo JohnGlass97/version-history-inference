@@ -9,6 +9,7 @@ use std::{
     process::exit,
 };
 use version_history_inference::{
+    git_generation::{build_instruction_trees, GitI},
     inference::{
         engine::infer_version_tree,
         file_fetching::{load_file_versions, load_versions},
@@ -24,6 +25,8 @@ enum Config {
     Infer(PathBuf, Option<String>, bool, bool, bool),
     /// directory
     View(PathBuf),
+    /// directory
+    GitGen(PathBuf),
 }
 
 fn parse_args() -> Config {
@@ -61,6 +64,15 @@ fn parse_args() -> Config {
                     .value_parser(value_parser!(PathBuf)),
                 )
         )
+        .subcommand(
+            Command::new("git-gen")
+                .about("Generate a git repo from with the structure of the previously produced version tree for the specified directory")
+                .arg(
+                    arg!(<dir> "Directory containing version_tree.json and matching versions")
+                    .id("dir")
+                    .value_parser(value_parser!(PathBuf)),
+                )
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -77,6 +89,11 @@ fn parse_args() -> Config {
             let dir = submatches.get_one::<PathBuf>("dir").unwrap().to_path_buf();
 
             Config::View(dir)
+        }
+        Some(("git-gen", submatches)) => {
+            let dir = submatches.get_one::<PathBuf>("dir").unwrap().to_path_buf();
+
+            Config::GitGen(dir)
         }
         _ => panic!("Command not recognised"), // This shouldn't happen with .subcommand_required(true)
     }
@@ -130,19 +147,18 @@ fn infer(
 
     // Output tree
     let label_tree = produce_label_tree(&diff_tree);
-    print!("{}", render(&label_tree).join("\n"));
+    println!("{}", render(&label_tree).join("\n"));
 
     // Save performance trace
     if (trace_perf) {
         perf_tracker.finished().unwrap_or_else(|e| {
-            eprintln!("\nFailed to save performance trace: {e}");
+            eprintln!("Failed to save performance trace: {e}");
             exit(1);
         });
     }
 }
 
-fn view(dir: &Path) {
-    // Load tree
+fn load_version_tree(dir: &Path) -> TreeNode<DiffInfo> {
     let version_tree_json = fs::read_to_string(dir.join("version_tree.json")).unwrap_or_else(|e| {
         eprintln!("Couldn't load version_tree.json from the specified directory: {e}");
         exit(1);
@@ -152,10 +168,29 @@ fn view(dir: &Path) {
             eprintln!("version_tree.json is malformed, maybe rerun the infer command: {e}");
             exit(1);
         });
+    version_tree
+}
+
+fn view(dir: &Path) {
+    let version_tree = load_version_tree(dir);
 
     // Output tree
     let label_tree = produce_label_tree(&version_tree);
-    print!("{}", render(&label_tree).join("\n"));
+    println!("{}", render(&label_tree).join("\n"));
+}
+
+fn git_gen(dir: &Path) {
+    let version_tree = load_version_tree(dir);
+
+    let instruciton_trees = build_instruction_trees(&version_tree);
+    let tree = TreeNode {
+        value: GitI::CreateCommit(format!("")),
+        children: instruciton_trees,
+    };
+
+    // Output tree
+    let label_tree = tree.map(&|i| format!("{i:?}"));
+    println!("{}", render(&label_tree).join("\n"));
 }
 
 fn main() {
@@ -164,5 +199,6 @@ fn main() {
             infer(&dir, ext, recursive, multithreading, trace_perf)
         }
         Config::View(dir) => view(&dir),
+        Config::GitGen(dir) => git_gen(&dir),
     };
 }
