@@ -51,7 +51,7 @@ fn file_heuristic(file_change: &FileChange) -> Pair {
     )
 }
 
-fn calculate_distances(text_diff: &TextualVersionDiff) -> Pair {
+fn calculate_divergences(text_diff: &TextualVersionDiff) -> Pair {
     let mut forward_backward = Pair(0., 0.);
 
     for file_change in &text_diff.added_files {
@@ -82,7 +82,7 @@ pub fn infer_version_tree(mut versions: Vec<Version>, mp: &MultiProgress) -> Tre
 
     let n = versions.len();
 
-    let mut distances: Array2<f32> = Array2::zeros((n, n));
+    let mut divergences: Array2<f32> = Array2::zeros((n, n));
 
     let versions_arc = Arc::new(versions);
 
@@ -106,7 +106,7 @@ pub fn infer_version_tree(mut versions: Vec<Version>, mp: &MultiProgress) -> Tre
 
             let text_diff = text_diff_versions(version_a, version_b);
             cmp_pb.inc(1);
-            (i, j, calculate_distances(&text_diff))
+            (i, j, calculate_divergences(&text_diff))
         })
         .collect::<Vec<_>>();
 
@@ -114,14 +114,14 @@ pub fn infer_version_tree(mut versions: Vec<Version>, mp: &MultiProgress) -> Tre
         let (i, j, edge_pair) = result;
         let Pair(a_to_b, b_to_a) = edge_pair;
 
-        distances[(i, j)] = a_to_b;
-        distances[(j, i)] = b_to_a;
+        divergences[(i, j)] = a_to_b;
+        divergences[(j, i)] = b_to_a;
     }
     cmp_pb.finish();
 
     let versions = Arc::try_unwrap(versions_arc).unwrap();
 
-    let msa = find_msa(distances.view(), 0);
+    let msa = find_msa(divergences.view(), 0);
 
     let mut data = versions.into_iter().map(|s| Some(s)).collect();
     let mut forest = assemble_forest(&msa, None, &mut data);
