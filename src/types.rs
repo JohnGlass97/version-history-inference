@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, path::Path};
+use std::{collections::HashMap, fmt, ops::AddAssign, path::Path};
 
 use serde::{Deserialize, Serialize};
 use similar::ChangeTag;
@@ -48,6 +48,16 @@ pub struct DiffInfo {
     pub added: usize,
     pub deleted: usize,
     pub modified: usize,
+}
+
+#[derive(Debug)]
+pub struct Pair(pub f32, pub f32);
+
+impl AddAssign for Pair {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
 }
 
 impl DiffInfo {

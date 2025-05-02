@@ -4,7 +4,7 @@ use crate::{
         edmonds::{assemble_forest, find_msa},
         file_fetching::load_versions,
     },
-    types::{FileChange, TextChange, TextualVersionDiff, TreeNode, Version},
+    types::{FileChange, Pair, TextChange, TextualVersionDiff, TreeNode, Version},
     utils::PB_BAR_STYLE,
 };
 use indicatif::{MultiProgress, ProgressBar};
@@ -14,7 +14,6 @@ use similar::ChangeTag;
 use std::{
     collections::HashMap,
     io,
-    ops::AddAssign,
     path::Path,
     sync::Arc,
     thread::{self},
@@ -30,15 +29,6 @@ const DELETE_LINE_P: f32 = 0.05;
 
 fn count_tag(changes: &Vec<TextChange>, tag: ChangeTag) -> usize {
     changes.iter().filter(|c| c.tag == tag).count()
-}
-
-struct Pair(f32, f32);
-
-impl AddAssign for Pair {
-    fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0;
-        self.1 += rhs.1;
-    }
 }
 
 fn file_heuristic(file_change: &FileChange) -> Pair {
