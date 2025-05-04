@@ -1,11 +1,17 @@
+use std::{fs, path::Path};
+
+use dircpy::copy_dir;
+use futures::io;
+use git2::{Commit, IndexAddOption, Repository, Signature};
+
 use crate::types::{DiffInfo, TreeNode};
 
 /// Git instruction
 #[derive(Debug)]
 pub enum GitI {
-    /// Commit message
+    /// Version name
     CreateCommit(String),
-    /// Commit message, branch name
+    /// Version name, branch name
     CreateBranch(String, String),
 }
 
@@ -31,7 +37,8 @@ pub fn build_instruction_trees(version_tree: &TreeNode<DiffInfo>) -> Vec<TreeNod
         let (depth, next_commit, branch, next_children) =
             children_tuples.swap_remove(next_commit_idx);
 
-        // First child of this version/commit is the next commit
+        // First child of this version/commit is the next commit (this is essential so that
+        // `gen_git_repo` knows where to find the one and only CreateCommit child and execute it last)
         let mut new_children = vec![TreeNode {
             value: GitI::CreateCommit(next_commit),
             children: next_children,
@@ -63,4 +70,109 @@ pub fn build_instruction_trees(version_tree: &TreeNode<DiffInfo>) -> Vec<TreeNod
             }
         })
         .collect()
+}
+
+fn curr_commit(repo: &Repository) -> Result<Commit, git2::Error> {
+    repo.find_commit(repo.head()?.target().unwrap())
+}
+
+fn create_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Error> {
+    let branch = repo.branch(&branch_name, &curr_commit(&repo)?, false)?;
+    repo.set_head(&format!("refs/heads/{branch_name}"))
+}
+
+fn goto_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Error> {
+    repo.set_head(&format!("refs/heads/{branch_name}"))
+}
+
+fn copy_version(dir: &Path, repo_name: &str, version_name: &str) -> io::Result<()> {
+    for entry in fs::read_dir(dir.join(repo_name))? {
+        let path = entry?.path();
+
+        if let Some(".git") = path.file_name().and_then(std::ffi::OsStr::to_str) {
+            continue;
+        }
+
+        if path.is_file() {
+            fs::remove_file(path)?;
+        } else {
+            fs::remove_dir_all(&path)?;
+        }
+    }
+
+    copy_dir(dir.join(version_name), dir.join(repo_name))
+}
+
+fn gen_sig(repo: &Repository) -> Result<Signature, git2::Error> {
+    let config = repo.config()?;
+    let name = config.get_string("user.name")?;
+    let email = config.get_string("user.email")?;
+    Signature::now(&name, &email)
+}
+
+fn commit_all(repo: &Repository, message: &str, no_parent: bool) -> Result<(), git2::Error> {
+    let mut index = repo.index()?;
+    index.add_all(["*"], IndexAddOption::DEFAULT, None)?;
+    index.write()?;
+
+    let tree = &repo.find_tree(index.write_tree()?)?;
+    let sig = &gen_sig(repo)?;
+    let parents: &[&Commit<'_>] = if no_parent {
+        &[]
+    } else {
+        &[&curr_commit(repo)?]
+    };
+
+    repo.commit(Some("HEAD"), sig, sig, message, tree, parents);
+    Ok(())
+}
+
+pub fn gen_git_repo(
+    dir: &Path,
+    instruction_trees: &Vec<TreeNode<GitI>>,
+    repo_name: &str,
+) -> Result<(), git2::Error> {
+    fs::remove_dir_all(dir.join(repo_name)).unwrap(); // TODO: Is this good?
+
+    let repo = Repository::init(dir.join(repo_name))?;
+    commit_all(&repo, "Initial commit", true)?;
+
+    fn execute_tree(
+        node: &TreeNode<GitI>,
+        repo: &Repository,
+        orig_branch: &str,
+        dir: &Path,
+        repo_name: &str,
+    ) -> Result<(), git2::Error> {
+        let (version_name, curr_branch) = match &node.value {
+            GitI::CreateCommit(v) => (v.as_str(), orig_branch),
+            GitI::CreateBranch(v, branch_name) => {
+                create_branch(repo, branch_name)?;
+                (v.as_str(), branch_name.as_str())
+            }
+        };
+
+        goto_branch(&repo, curr_branch)?;
+
+        copy_version(dir, repo_name, &version_name)
+            .map_err(|e| git2::Error::from_str(&format!("{e}")))?;
+        commit_all(&repo, &version_name, false)?;
+
+        for child in node.children.iter().rev() {
+            execute_tree(child, repo, curr_branch, dir, repo_name)?;
+        }
+
+        Ok(())
+    }
+
+    let head = repo.head()?;
+    let main_branch_name = head
+        .shorthand()
+        .ok_or(git2::Error::from_str("Couldn't get branch name"))?;
+
+    for tree in instruction_trees {
+        execute_tree(tree, &repo, main_branch_name, dir, repo_name)?;
+    }
+
+    Ok(())
 }

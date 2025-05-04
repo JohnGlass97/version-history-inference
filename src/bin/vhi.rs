@@ -9,7 +9,7 @@ use std::{
     process::exit,
 };
 use version_history_inference::{
-    git_generation::{build_instruction_trees, GitI},
+    git_generation::{build_instruction_trees, gen_git_repo, GitI},
     inference::{
         engine::infer_version_tree,
         file_fetching::{load_file_versions, load_versions},
@@ -182,15 +182,21 @@ fn view(dir: &Path) {
 fn git_gen(dir: &Path) {
     let version_tree = load_version_tree(dir);
 
-    let instruciton_trees = build_instruction_trees(&version_tree);
-    let tree = TreeNode {
-        value: GitI::CreateCommit(format!("")),
-        children: instruciton_trees,
-    };
+    let instruction_trees = build_instruction_trees(&version_tree);
+    gen_git_repo(dir, &instruction_trees, "repo").unwrap_or_else(|e| {
+        eprintln!("Failed to generate Git repository: {e}");
+        exit(1);
+    });
 
-    // Output tree
-    let label_tree = tree.map(&|i| format!("{i:?}"));
-    println!("{}", render(&label_tree).join("\n"));
+    // let tree = &TreeNode {
+    //     value: GitI::CreateCommit(format!("Initial commit")),
+    //     children: instruction_trees,
+    // };
+
+    // // Output tree
+    // let label_tree = tree.map(&|i| format!("{i:?}"));
+    // println!("{}", render(&label_tree).join("\n"));
+    println!("Done!");
 }
 
 fn main() {
