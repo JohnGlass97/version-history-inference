@@ -47,28 +47,28 @@ mod tests {
 
     #[test]
     fn test_find_msa_simple_mst() {
-        let distance_graph = arr2(&[
+        let divergence_graph = arr2(&[
             [0., 99., 100., 100.],
             [99., 0., 1., 1.],
             [100., 1., 0., 5.],
             [100., 1., 5., 0.],
         ]);
 
-        let res = find_msa(distance_graph.view(), 0);
+        let res = find_msa(divergence_graph.view(), 0);
 
         assert_eq!(msa_to_string(&res), "_, 0, 1, 1");
     }
 
     #[test]
     fn test_find_msa_simple_msa() {
-        let distance_graph = arr2(&[
+        let divergence_graph = arr2(&[
             [0., 99., 100., 99.],
             [99., 0., 10., 10.],
             [100., 1., 0., 5.],
             [99., 2., 5., 0.],
         ]);
 
-        let res = find_msa(distance_graph.view(), 0);
+        let res = find_msa(divergence_graph.view(), 0);
 
         assert_eq!(msa_to_string(&res), "_, 2, 3, 0");
     }

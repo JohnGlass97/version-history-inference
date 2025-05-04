@@ -29,5 +29,17 @@ $ cargo install
 Run the tool:
 
 ```
-$ cargo run --bin vhi -- infer <PATH>
+$ cargo run --release --bin vhi infer <PATH>
 ```
+
+Or view all commands and their options:
+
+```
+$ cargo run --release --bin vhi -- -h
+```
+
+The `--` is to separate cargo arguments from those of the CLI tool.
+
+## Other binaries
+
+There are binaries other than `vhi` in `src/bin` related to evaluating the algorithm on GitHub fork trees, unfortunately I haven't had time to write about those here.
