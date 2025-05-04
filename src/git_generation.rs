@@ -127,12 +127,21 @@ fn commit_all(repo: &Repository, message: &str, no_parent: bool) -> Result<(), g
     Ok(())
 }
 
+fn io_to_git(e: io::Error) -> git2::Error {
+    git2::Error::from_str(&format!("{e}"))
+}
+
 pub fn gen_git_repo(
     dir: &Path,
     instruction_trees: &Vec<TreeNode<GitI>>,
     repo_name: &str,
 ) -> Result<(), git2::Error> {
-    fs::remove_dir_all(dir.join(repo_name)).unwrap(); // TODO: Is this good?
+    if fs::exists(dir.join(repo_name)).map_err(io_to_git)? {
+        return Err(git2::Error::from_str(&format!(
+            "{} already exists",
+            dir.join(repo_name).display()
+        )));
+    }
 
     let repo = Repository::init(dir.join(repo_name))?;
     commit_all(&repo, "Initial commit", true)?;
@@ -154,8 +163,7 @@ pub fn gen_git_repo(
 
         goto_branch(&repo, curr_branch)?;
 
-        copy_version(dir, repo_name, &version_name)
-            .map_err(|e| git2::Error::from_str(&format!("{e}")))?;
+        copy_version(dir, repo_name, &version_name).map_err(io_to_git)?;
         commit_all(&repo, &version_name, false)?;
 
         for child in node.children.iter().rev() {
