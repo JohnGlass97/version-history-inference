@@ -153,6 +153,8 @@ pub fn gen_git_repo(
         dir: &Path,
         repo_name: &str,
     ) -> Result<(), git2::Error> {
+        goto_branch(&repo, orig_branch)?;
+
         let (version_name, curr_branch) = match &node.value {
             GitI::CreateCommit(v) => (v.as_str(), orig_branch),
             GitI::CreateBranch(v, branch_name) => {
@@ -160,8 +162,6 @@ pub fn gen_git_repo(
                 (v.as_str(), branch_name.as_str())
             }
         };
-
-        goto_branch(&repo, curr_branch)?;
 
         copy_version(dir, repo_name, &version_name).map_err(io_to_git)?;
         commit_all(&repo, &version_name, false)?;
