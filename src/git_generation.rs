@@ -15,7 +15,10 @@ pub fn build_instruction_trees(version_tree: &TreeNode<DiffInfo>) -> Vec<TreeNod
         let mut children_tuples: Vec<_> = node.children.iter().map(inner).collect();
 
         // Choose the child with the deepest subtree to be the next commit on the same branch
-        let Some((next_commit_idx, _)) = children_tuples.iter().enumerate().max_by_key(|&t| t.0)
+        let Some((next_commit_idx, _)) = children_tuples
+            .iter()
+            .enumerate()
+            .max_by_key(|&(_, (depth, _, _, _))| depth)
         else {
             // This node must have no children
             let depth = 0;
