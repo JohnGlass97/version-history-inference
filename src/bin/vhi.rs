@@ -25,8 +25,8 @@ enum Config {
     Infer(PathBuf, Option<String>, bool, bool, bool),
     /// directory
     View(PathBuf),
-    /// directory
-    GitGen(PathBuf),
+    /// directory, name
+    GitGen(PathBuf, String),
 }
 
 fn parse_args() -> Config {
@@ -72,6 +72,11 @@ fn parse_args() -> Config {
                     .id("dir")
                     .value_parser(value_parser!(PathBuf)),
                 )
+                .arg(
+                    arg!(<name> "Name for the Git repository, this will be placed in the provided directory")
+                    .id("name")
+                    .value_parser(value_parser!(String)),
+                )
         )
         .get_matches();
 
@@ -92,8 +97,9 @@ fn parse_args() -> Config {
         }
         Some(("git-gen", submatches)) => {
             let dir = submatches.get_one::<PathBuf>("dir").unwrap().to_path_buf();
+            let name = submatches.get_one::<String>("name").unwrap().to_owned();
 
-            Config::GitGen(dir)
+            Config::GitGen(dir, name)
         }
         _ => panic!("Command not recognised"), // This shouldn't happen with .subcommand_required(true)
     }
@@ -179,11 +185,11 @@ fn view(dir: &Path) {
     println!("{}", render(&label_tree).join("\n"));
 }
 
-fn git_gen(dir: &Path) {
+fn git_gen(dir: &Path, name: &str) {
     let version_tree = load_version_tree(dir);
 
     let instruction_trees = build_instruction_trees(&version_tree);
-    gen_git_repo(dir, &instruction_trees, "repo").unwrap_or_else(|e| {
+    gen_git_repo(dir, &instruction_trees, name).unwrap_or_else(|e| {
         eprintln!("Failed to generate Git repository: {e}");
         exit(1);
     });
@@ -205,6 +211,6 @@ fn main() {
             infer(&dir, ext, recursive, multithreading, trace_perf)
         }
         Config::View(dir) => view(&dir),
-        Config::GitGen(dir) => git_gen(&dir),
+        Config::GitGen(dir, name) => git_gen(&dir, &name),
     };
 }
