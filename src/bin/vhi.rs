@@ -66,14 +66,14 @@ fn parse_args() -> Config {
         )
         .subcommand(
             Command::new("git-gen")
-                .about("Generate a git repo from with the structure of the previously produced version tree for the specified directory")
+                .about("Generate a Git repo from with the structure of the previously produced version tree for the specified directory")
                 .arg(
                     arg!(<dir> "Directory containing version_tree.json and matching versions")
                     .id("dir")
                     .value_parser(value_parser!(PathBuf)),
                 )
                 .arg(
-                    arg!(<name> "Name for the Git repository, this will be placed in the provided directory")
+                    arg!(<name> "Name for the Git repo, this will be placed in the provided directory")
                     .id("name")
                     .value_parser(value_parser!(String)),
                 )
