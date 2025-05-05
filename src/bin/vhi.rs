@@ -21,8 +21,8 @@ use version_history_inference::{
 
 #[derive(Debug)]
 enum Config {
-    /// directory, file extension, recursive, multithreading, trace_perf
-    Infer(PathBuf, Option<String>, bool, bool, bool),
+    /// directory, file extension, recursive, multithreading, trace_perf filename
+    Infer(PathBuf, Option<String>, bool, bool, Option<String>),
     /// directory
     View(PathBuf),
     /// directory, name
@@ -52,7 +52,9 @@ fn parse_args() -> Config {
                     arg!(--"no-multithreading" "Disable multithreading").action(ArgAction::SetTrue)
                 )
                 .arg(
-                    arg!(-p --"trace-performance" "Produce a JSON file with runtime duration information").action(ArgAction::SetTrue)
+                    arg!(-p --"trace-performance" <filename> "Produce a JSON file with runtime duration information")
+                    .id("trace-perf")
+                    .value_parser(value_parser!(String))
                 )
         )
         .subcommand(
@@ -86,7 +88,7 @@ fn parse_args() -> Config {
             let ext = submatches.get_one::<String>("ext").cloned();
             let recursive = submatches.get_flag("recursive");
             let multithreading = !submatches.get_flag("no-multithreading");
-            let trace_perf = submatches.get_flag("trace-performance");
+            let trace_perf = submatches.get_one::<String>("trace-perf").cloned();
 
             Config::Infer(dir, ext, recursive, multithreading, trace_perf)
         }
@@ -115,7 +117,7 @@ fn infer(
     extension: Option<String>,
     recursive: bool,
     multithreading: bool,
-    trace_perf: bool,
+    trace_perf: Option<String>,
 ) {
     // Progress tracking
     let mp = MultiProgress::new();
@@ -156,8 +158,8 @@ fn infer(
     println!("{}", render(&label_tree).join("\n"));
 
     // Save performance trace
-    if (trace_perf) {
-        perf_tracker.finished().unwrap_or_else(|e| {
+    if let Some(filename) = trace_perf {
+        perf_tracker.finished(filename).unwrap_or_else(|e| {
             eprintln!("Failed to save performance trace: {e}");
             exit(1);
         });

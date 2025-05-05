@@ -69,16 +69,12 @@ impl InferencePerformanceTracker {
         self.reset_instant();
     }
 
-    pub fn finished(&mut self) -> io::Result<()> {
+    pub fn finished(&mut self, filename: String) -> io::Result<()> {
         self.curr_instant = self.started;
         self.record_instant("total_rt");
 
         // Save trace to JSON file
-        serde_json::to_writer(
-            File::create(self.save_dir.join("perf_trace.json"))?,
-            &self.map,
-        )
-        .unwrap();
+        serde_json::to_writer(File::create(self.save_dir.join(filename))?, &self.map).unwrap();
 
         Ok(())
     }
