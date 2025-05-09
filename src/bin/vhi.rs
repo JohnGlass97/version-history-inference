@@ -21,8 +21,8 @@ use version_history_inference::{
 
 #[derive(Debug)]
 enum Config {
-    /// directory, file extension, recursive, multithreading, trace_perf filename
-    Infer(PathBuf, Option<String>, bool, bool, Option<String>),
+    /// directory, file extension, recursive, multithreading, trace_perf filename, dry_run
+    Infer(PathBuf, Option<String>, bool, bool, Option<String>, bool),
     /// directory
     View(PathBuf),
     /// directory, name
@@ -55,6 +55,9 @@ fn parse_args() -> Config {
                     arg!(-p --"trace-performance" <filename> "Produce a JSON file with runtime duration information")
                     .id("trace-perf")
                     .value_parser(value_parser!(String))
+                )
+                .arg(
+                    arg!(-d --"dry-run" "Skip creation of version_tree.json").action(ArgAction::SetTrue)
                 )
         )
         .subcommand(
@@ -89,8 +92,9 @@ fn parse_args() -> Config {
             let recursive = submatches.get_flag("recursive");
             let multithreading = !submatches.get_flag("no-multithreading");
             let trace_perf = submatches.get_one::<String>("trace-perf").cloned();
+            let dry_run = submatches.get_flag("dry-run");
 
-            Config::Infer(dir, ext, recursive, multithreading, trace_perf)
+            Config::Infer(dir, ext, recursive, multithreading, trace_perf, dry_run)
         }
         Some(("view", submatches)) => {
             let dir = submatches.get_one::<PathBuf>("dir").unwrap().to_path_buf();
@@ -118,6 +122,7 @@ fn infer(
     recursive: bool,
     multithreading: bool,
     trace_perf: Option<String>,
+    dry_run: bool,
 ) {
     // Progress tracking
     let mp = MultiProgress::new();
@@ -144,10 +149,12 @@ fn infer(
     save_spinner.set_prefix("Saving tree");
 
     let diff_tree = produce_diff_tree(&version_tree);
-    save_version_tree(&dir, &diff_tree).unwrap_or_else(|e| {
-        eprintln!("Failed to save version tree: {e}");
-        exit(1);
-    });
+    if !dry_run {
+        save_version_tree(&dir, &diff_tree).unwrap_or_else(|e| {
+            eprintln!("Failed to save version tree: {e}");
+            exit(1);
+        });
+    }
     perf_tracker.done_saving();
 
     save_spinner.finish();
@@ -209,8 +216,8 @@ fn git_gen(dir: &Path, name: &str) {
 
 fn main() {
     match parse_args() {
-        Config::Infer(dir, ext, recursive, multithreading, trace_perf) => {
-            infer(&dir, ext, recursive, multithreading, trace_perf)
+        Config::Infer(dir, ext, recursive, multithreading, trace_perf, dry_run) => {
+            infer(&dir, ext, recursive, multithreading, trace_perf, dry_run)
         }
         Config::View(dir) => view(&dir),
         Config::GitGen(dir, name) => git_gen(&dir, &name),
