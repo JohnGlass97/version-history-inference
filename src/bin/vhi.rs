@@ -135,7 +135,7 @@ fn infer(
     perf_tracker.done_loading(&versions);
 
     // Infer version tree
-    let version_tree = infer_version_tree(versions, &mp);
+    let version_tree = infer_version_tree(versions, multithreading, &mp);
     perf_tracker.done_inferring();
 
     // Save tree

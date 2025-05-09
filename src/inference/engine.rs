@@ -62,7 +62,11 @@ pub fn calculate_divergences(text_diff: &TextualVersionDiff) -> Pair {
     forward_backward
 }
 
-pub fn infer_version_tree(mut versions: Vec<Version>, mp: &MultiProgress) -> TreeNode<Version> {
+pub fn infer_version_tree(
+    mut versions: Vec<Version>,
+    multithreading: bool,
+    mp: &MultiProgress,
+) -> TreeNode<Version> {
     let null_version = Version {
         name: "Empty".to_string(),
         path: Path::new(".").into(), // TODO: Is this safe?
@@ -88,17 +92,20 @@ pub fn infer_version_tree(mut versions: Vec<Version>, mp: &MultiProgress) -> Tre
     cmp_pb.set_prefix("Doing comparisons");
     cmp_pb.enable_steady_tick(Duration::from_millis(100));
 
-    let results = to_compare
-        .par_iter()
-        .map(|&(i, j)| {
-            let version_a = &versions_arc[i];
-            let version_b = &versions_arc[j];
+    let map_op = |&(i, j): &(usize, usize)| {
+        let version_a = &versions_arc[i];
+        let version_b = &versions_arc[j];
 
-            let text_diff = text_diff_versions(version_a, version_b);
-            cmp_pb.inc(1);
-            (i, j, calculate_divergences(&text_diff))
-        })
-        .collect::<Vec<_>>();
+        let text_diff = text_diff_versions(version_a, version_b);
+        cmp_pb.inc(1);
+        (i, j, calculate_divergences(&text_diff))
+    };
+
+    let results = if multithreading {
+        to_compare.par_iter().map(map_op).collect::<Vec<_>>()
+    } else {
+        to_compare.iter().map(map_op).collect::<Vec<_>>()
+    };
 
     for result in results {
         let (i, j, edge_pair) = result;
@@ -157,7 +164,7 @@ mod tests {
 
         let mp = &MultiProgress::new();
         let versions = load_versions(base, true, &mp).unwrap();
-        let version_tree = infer_version_tree(versions, &mp);
+        let version_tree = infer_version_tree(versions, true, &mp);
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
         let expected = TreeNode {
@@ -220,7 +227,7 @@ mod tests {
 
         let mp = &MultiProgress::new();
         let versions = load_versions(base, true, &mp).unwrap();
-        let version_tree = infer_version_tree(versions, &mp);
+        let version_tree = infer_version_tree(versions, true, &mp);
         let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
 
         let expected = TreeNode {
