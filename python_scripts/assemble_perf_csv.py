@@ -12,15 +12,15 @@ for prefix in prefixes:
 results_df = pd.DataFrame(columns=columns)
 
 for test_repo in os.listdir("./test_repos"):
-    dir = "./test_repos/" + test_repo
-    if not os.path.isdir(dir):
+    test_dir = "./test_repos/" + test_repo
+    if not os.path.isdir(test_dir):
         continue
 
     row = {}
 
-    no_mt = json.load(open(dir + "/perf_trace_no_multithreading.json"))
-    base = json.load(open(dir + "/perf_trace.json"))
-    no_defender = json.load(open(dir + "/perf_trace_no_defender.json"))
+    no_mt = json.load(open(test_dir + "/perf_trace_no_multithreading.json"))
+    base = json.load(open(test_dir + "/perf_trace.json"))
+    no_defender = json.load(open(test_dir + "/perf_trace_no_defender.json"))
 
     row["name"] = test_repo
     row["version_count"] = base["no_versions"]
