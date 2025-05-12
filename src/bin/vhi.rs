@@ -7,6 +7,7 @@ use std::{
     fs::{self, File},
     path::{Path, PathBuf},
     process::exit,
+    time::Duration,
 };
 use version_history_inference::{
     git_generation::{build_instruction_trees, gen_git_repo, GitI},
@@ -147,6 +148,7 @@ fn infer(
     let save_spinner = mp.add(ProgressBar::new_spinner());
     save_spinner.set_style(PB_SPINNER_STYLE.clone());
     save_spinner.set_prefix("Saving tree");
+    save_spinner.enable_steady_tick(Duration::from_millis(100));
 
     let diff_tree = produce_diff_tree(&version_tree);
     if !dry_run {
