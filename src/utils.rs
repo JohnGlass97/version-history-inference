@@ -1,3 +1,4 @@
+use crate::types::{DiffInfo, TreeNode, Version};
 use indicatif::ProgressStyle;
 use std::sync::LazyLock;
 use std::{
@@ -8,7 +9,15 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::types::Version;
+pub fn produce_label_tree(diff_tree: &TreeNode<DiffInfo>) -> TreeNode<String> {
+    fn f(d: &DiffInfo) -> String {
+        format!(
+            "{} - FILES: {} A, {} D, {} M",
+            d.name, d.added, d.deleted, d.modified,
+        )
+    }
+    diff_tree.map(&f)
+}
 
 pub static PB_BAR_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
     ProgressStyle::with_template("[{elapsed_precise}] {prefix:20} {bar:60} {pos:>7}/{len:7} {msg}")

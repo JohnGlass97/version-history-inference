@@ -4,7 +4,10 @@ use crate::{
         edmonds::{assemble_forest, find_msa},
         file_fetching::load_versions,
     },
-    types::{FileChange, Pair, TextChange, TextualVersionDiff, TreeNode, Version},
+    types::{
+        DiffInfo, DivCalcResult, FileChange, Pair, TextChange, TextualVersionDiff, TreeNode,
+        Version,
+    },
     utils::PB_BAR_STYLE,
 };
 use indicatif::{MultiProgress, ProgressBar};
@@ -41,7 +44,7 @@ fn file_heuristic(file_change: &FileChange) -> Pair {
     )
 }
 
-pub fn calculate_divergences(text_diff: &TextualVersionDiff) -> Pair {
+pub fn calculate_divergences(text_diff: &TextualVersionDiff) -> (DivCalcResult, DivCalcResult) {
     let mut forward_backward = Pair(0., 0.);
 
     for file_change in &text_diff.added_files {
@@ -59,14 +62,32 @@ pub fn calculate_divergences(text_diff: &TextualVersionDiff) -> Pair {
         forward_backward += file_heuristic(file_change);
     }
 
-    forward_backward
+    let added = text_diff.added_files.len();
+    let deleted = text_diff.deleted_files.len();
+    let modified = text_diff.modified_files.len();
+
+    let forward = DivCalcResult {
+        added,
+        deleted,
+        modified,
+        divergence: forward_backward.0,
+    };
+
+    let backward = DivCalcResult {
+        added: deleted,
+        deleted: added,
+        modified,
+        divergence: forward_backward.1,
+    };
+
+    (forward, backward)
 }
 
 pub fn infer_version_tree(
     mut versions: Vec<Version>,
     multithreading: bool,
     mp: &MultiProgress,
-) -> TreeNode<Version> {
+) -> TreeNode<DiffInfo> {
     let null_version = Version {
         name: "Empty".to_string(),
         path: Path::new(".").into(), // TODO: Is this safe?
@@ -75,8 +96,6 @@ pub fn infer_version_tree(
     versions.insert(0, null_version);
 
     let n = versions.len();
-
-    let mut divergences: Array2<f32> = Array2::zeros((n, n));
 
     let versions_arc = Arc::new(versions);
 
@@ -107,26 +126,49 @@ pub fn infer_version_tree(
         to_compare.iter().map(map_op).collect::<Vec<_>>()
     };
 
-    for result in results {
-        let (i, j, edge_pair) = result;
-        let Pair(a_to_b, b_to_a) = edge_pair;
+    let mut divergences: Array2<f32> = Array2::zeros((n, n));
 
-        divergences[(i, j)] = a_to_b;
-        divergences[(j, i)] = b_to_a;
+    // Will use full DivCalcResult for producing DiffInfo tree
+    let default_res = DivCalcResult::new();
+    let empty_res_vec = vec![default_res; n * n];
+    let mut div_calc_res: Array2<DivCalcResult> =
+        Array2::from_shape_vec((n, n), empty_res_vec).unwrap();
+
+    for result in results {
+        let (i, j, (forward, backward)) = result;
+
+        divergences[(i, j)] = forward.divergence;
+        divergences[(j, i)] = backward.divergence;
+
+        div_calc_res[(i, j)] = forward;
+        div_calc_res[(j, i)] = backward;
     }
     cmp_pb.finish();
 
     let versions = Arc::try_unwrap(versions_arc).unwrap();
 
     let msa = find_msa(divergences.view(), 0);
-
-    let mut data = versions.into_iter().map(|s| Some(s)).collect();
-    let mut forest = assemble_forest(&msa, None, &mut data);
+    let mut forest = assemble_forest(&msa, None);
 
     assert_eq!(forest.len(), 1, "MSA is not tree");
     let tree = forest.remove(0);
 
-    tree
+    // Convert tree of indexes to DiffInfo tree
+    tree.map_with_parent(
+        &|&i, parent| {
+            // (i, i) will just give a null difference (all zeroes)
+            let p = parent.cloned().unwrap_or(i);
+            let forward = div_calc_res[(p, i)];
+            DiffInfo {
+                name: versions[i].name.to_owned(),
+                added: forward.added,
+                deleted: forward.deleted,
+                modified: forward.modified,
+                divergence: forward.divergence,
+            }
+        },
+        None,
+    )
 }
 
 #[cfg(test)]
@@ -139,7 +181,7 @@ mod tests {
     use tempdir::TempDir;
 
     use super::*;
-    use crate::{rendering::produce_label_tree, test_utils::append_to_file};
+    use crate::{test_utils::append_to_file, utils::produce_label_tree};
 
     #[test]
     fn handcrafted_1() {
@@ -165,7 +207,7 @@ mod tests {
         let mp = &MultiProgress::new();
         let versions = load_versions(base, true, &mp).unwrap();
         let version_tree = infer_version_tree(versions, true, &mp);
-        let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
+        let name_tree = version_tree.map(&|v| v.name.to_owned());
 
         let expected = TreeNode {
             value: "Empty".to_owned(),
@@ -228,7 +270,7 @@ mod tests {
         let mp = &MultiProgress::new();
         let versions = load_versions(base, true, &mp).unwrap();
         let version_tree = infer_version_tree(versions, true, &mp);
-        let name_tree = version_tree.map(&|v: &Version| v.name.to_owned());
+        let name_tree = version_tree.map(&|v| v.name.to_owned());
 
         let expected = TreeNode {
             value: "Empty".to_owned(),

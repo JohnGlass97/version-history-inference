@@ -2,7 +2,6 @@
 
 pub mod git_generation;
 pub mod inference;
-pub mod rendering;
 pub mod types;
 pub mod utils;
 

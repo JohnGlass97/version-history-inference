@@ -51,8 +51,27 @@ pub struct DiffInfo {
     pub divergence: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Pair(pub f32, pub f32);
+
+#[derive(Debug, Clone, Copy)]
+pub struct DivCalcResult {
+    pub added: usize,
+    pub deleted: usize,
+    pub modified: usize,
+    pub divergence: f32,
+}
+
+impl DivCalcResult {
+    pub fn new() -> Self {
+        Self {
+            added: 0,
+            deleted: 0,
+            modified: 0,
+            divergence: 0.,
+        }
+    }
+}
 
 impl AddAssign for Pair {
     fn add_assign(&mut self, rhs: Self) {

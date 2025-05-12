@@ -15,9 +15,8 @@ use version_history_inference::{
         engine::infer_version_tree,
         file_fetching::{load_file_versions, load_versions},
     },
-    rendering::{produce_diff_tree, produce_label_tree},
     types::{DiffInfo, TreeNode},
-    utils::{InferencePerformanceTracker, PB_SPINNER_STYLE},
+    utils::{produce_label_tree, InferencePerformanceTracker, PB_SPINNER_STYLE},
 };
 
 #[derive(Debug)]
@@ -150,9 +149,8 @@ fn infer(
     save_spinner.set_prefix("Saving tree");
     save_spinner.enable_steady_tick(Duration::from_millis(100));
 
-    let diff_tree = produce_diff_tree(&version_tree);
     if !dry_run {
-        save_version_tree(&dir, &diff_tree).unwrap_or_else(|e| {
+        save_version_tree(&dir, &version_tree).unwrap_or_else(|e| {
             eprintln!("Failed to save version tree: {e}");
             exit(1);
         });
@@ -163,7 +161,7 @@ fn infer(
     println!("Done in {}\n", HumanDuration(perf_tracker.elapsed()));
 
     // Output tree
-    let label_tree = produce_label_tree(&diff_tree);
+    let label_tree = produce_label_tree(&version_tree);
     println!("{}", render(&label_tree).join("\n"));
 
     // Save performance trace

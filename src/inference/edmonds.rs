@@ -20,19 +20,17 @@ fn msa_to_string(result: &Vec<Option<usize>>) -> String {
         .join(", ")
 }
 
-/// Combine tree in vector of parents form and data vector
-/// to get TreeNode vector (a forest)
-pub fn assemble_forest<T>(
+/// Convert tree in vector of parents form to get TreeNode vector (a forest)
+pub fn assemble_forest(
     parents: &Vec<Option<usize>>,
     parent: Option<usize>,
-    data: &mut Vec<Option<T>>,
-) -> Vec<TreeNode<T>> {
-    let mut forest: Vec<TreeNode<T>> = Vec::new();
+) -> Vec<TreeNode<usize>> {
+    let mut forest: Vec<TreeNode<usize>> = Vec::new();
     for (this, p) in parents.iter().enumerate() {
         if *p == parent {
             forest.push(TreeNode {
-                value: data[this].take().unwrap(),
-                children: assemble_forest(parents, Some(this), data),
+                value: this,
+                children: assemble_forest(parents, Some(this)),
             });
         }
     }

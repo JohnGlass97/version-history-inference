@@ -9,8 +9,8 @@ use disjoint::DisjointSet;
 use render_as_tree::render;
 use version_history_inference::{
     evaluation::forks::{gen_version_name, VersionRef},
-    rendering::produce_label_tree,
     types::{DiffInfo, TreeNode},
+    utils::produce_label_tree,
 };
 
 fn gen_name_map(node: &TreeNode<DiffInfo>) -> HashMap<String, usize> {
