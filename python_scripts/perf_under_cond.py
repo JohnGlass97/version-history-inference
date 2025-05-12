@@ -2,6 +2,9 @@ import json
 import os
 import pandas as pd
 
+# ROOT OF PROJECT
+os.chdir("..")
+
 columns = ["name", "version_count", "avg_files_per_version"]
 time_metrics = ["load_s", "infer_s", "save_s", "total_s"]
 prefixes = ["no_mt_", "base_", "no_defender_"]
@@ -35,4 +38,4 @@ for test_repo in os.listdir("./test_repos"):
     results_df = pd.concat(
         [results_df, pd.DataFrame([row])], ignore_index=True)
 
-results_df.to_csv("./test_repos/performance.csv")
+results_df.to_csv("./test_repos/perf_under_cond.csv")
