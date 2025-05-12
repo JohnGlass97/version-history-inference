@@ -75,7 +75,15 @@ pub fn load_versions(
     multithreading: bool,
     mp: &MultiProgress,
 ) -> io::Result<Vec<Version>> {
-    let version_paths = dirs_in_dir(dir)?;
+    let version_paths = dirs_in_dir(dir)?
+        .into_iter()
+        .filter(|d| {
+            !d.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("ignore_")
+        })
+        .collect::<Vec<_>>();
     let mut versions: Vec<Version> = Vec::new();
 
     let pb = mp.add(ProgressBar::new(version_paths.len() as u64));
