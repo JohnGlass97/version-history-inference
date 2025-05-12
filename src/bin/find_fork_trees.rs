@@ -31,7 +31,8 @@ async fn main() {
     let octo = Octocrab::builder().personal_token(token).build().unwrap();
 
     let test_repo_file = File::open("./test_repos.json").unwrap();
-    let list: serde_json::Value = serde_json::from_reader(test_repo_file).unwrap();
+    let obj: serde_json::Value = serde_json::from_reader(test_repo_file).unwrap();
+    let list = obj.get("current").unwrap();
 
     let mut fork_tree_futures = vec![];
 

@@ -1,16 +1,20 @@
-[
-  "ocornut/imgui",
-  "rails/rails",
-  "facebook/react",
-  "redis/redis",
-  "zenorocha/clipboard.js",
-  "chartjs/Chart.js",
-  "FormidableLabs/spectacle",
-  "palantir/blueprint",
-  "tldr-pages/tldr",
-  "typicode/husky",
-  "raysan5/raylib",
-  "facebook/jest",
-  "prettier/prettier",
-  "chancejs/chancejs"
-]
+{
+  "current": [
+    "ocornut/imgui",
+    "rails/rails",
+    "facebook/react",
+    "redis/redis",
+    "zenorocha/clipboard.js",
+    "chartjs/Chart.js",
+    "FormidableLabs/spectacle",
+    "prettier/prettier",
+    "raysan5/raylib",
+    "chancejs/chancejs"
+  ],
+  "extra": [
+    "palantir/blueprint",
+    "tldr-pages/tldr",
+    "facebook/jest",
+    "typicode/husky"
+  ]
+}
